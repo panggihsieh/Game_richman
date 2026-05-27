@@ -30,18 +30,23 @@ const boardPositions = [
   [3, 1], [2, 1]
 ];
 
-let stages = builtInImages.map((item, index) => ({
-  id: index,
-  name: item.name,
-  scientific: item.scientific,
-  color: item.color,
-  label: item.label,
-  type: item.type,
-  builtIn: makeStageImage(item),
-  image: makeStageImage(item),
-  boardImage: makeStageImage(item),
-  customImage: ""
-}));
+function createStage(item, index) {
+  return {
+    id: index,
+    name: item.name,
+    scientific: item.scientific,
+    color: item.color,
+    label: item.label,
+    type: item.type,
+    builtIn: makeStageImage(item),
+    image: makeStageImage(item),
+    boardImage: makeStageImage(item),
+    customImage: ""
+  };
+}
+
+let stages = builtInImages.map(createStage);
+let originalStages = stages.map((stage) => ({ ...stage }));
 
 let players = [];
 let currentTurn = 0;
@@ -156,6 +161,7 @@ async function loadStagePhotos() {
       // Offline classrooms still get the local SVG icon cards.
     }
   }));
+  originalStages = stages.map((stage) => ({ ...stage }));
   renderAll();
 }
 
@@ -355,12 +361,14 @@ function renderStageEditor() {
         stage.image = makeUploadedStageImage(stage, stage.customImage);
         stage.boardImage = stage.image;
       }
+      updateOriginalStage(stage);
       renderBoard();
     });
     card.querySelector("[data-built-in]").addEventListener("click", () => {
       stage.customImage = "";
       stage.image = stage.builtIn;
       stage.boardImage = stage.builtIn;
+      updateOriginalStage(stage);
       renderAll();
     });
     card.querySelector("[data-upload]").addEventListener("click", () => file.click());
@@ -368,6 +376,7 @@ function renderStageEditor() {
       stage.customImage = src;
       stage.image = makeUploadedStageImage(stage, src);
       stage.boardImage = stage.image;
+      updateOriginalStage(stage);
       renderAll();
     }));
 
@@ -470,10 +479,15 @@ function updateTimerDisplay() {
 }
 
 function shuffleStages() {
-  stages = stages
+  stages = originalStages
+    .map((stage) => ({ ...stage }))
     .map((stage) => ({ stage, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
     .map((item) => item.stage);
+}
+
+function updateOriginalStage(stage) {
+  originalStages = originalStages.map((item) => (item.id === stage.id ? { ...stage } : item));
 }
 
 function playStepSound(step) {
