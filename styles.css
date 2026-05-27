@@ -306,14 +306,14 @@ h1 {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(180px, 260px);
+  grid-template-columns: minmax(180px, 240px) minmax(260px, 340px);
   gap: 14px;
   align-items: stretch;
   grid-column: 2 / 8;
   grid-row: 2 / 4;
   place-self: center;
-  max-width: 620px;
-  width: min(100%, 620px);
+  max-width: 640px;
+  width: min(100%, 640px);
 }
 
 .timer-wheel,
@@ -354,12 +354,12 @@ h1 {
 .center-dice-face {
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 86px;
+  height: 86px;
   border: 4px solid var(--ink);
   border-radius: 14px;
   color: var(--ink);
-  font-size: 38px;
+  font-size: 44px;
   font-weight: 900;
   background: #fff;
 }
@@ -367,6 +367,15 @@ h1 {
 .center-dice button {
   width: 100%;
   padding: 10px 12px;
+}
+
+#centerRollDice {
+  min-height: 64px;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 900;
+  background: var(--red);
+  box-shadow: 0 10px 24px rgba(216, 80, 80, 0.28);
 }
 
 .center-dice button:disabled {
