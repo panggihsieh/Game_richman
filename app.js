@@ -130,7 +130,7 @@ async function loadStagePhotos() {
       if (!response.ok) return;
       const data = await response.json();
       const photo = data.results?.[0]?.default_photo;
-      const photoUrl = photo?.square_url || photo?.medium_url || photo?.url;
+      const photoUrl = photo?.medium_url || photo?.url || photo?.square_url;
       if (!photoUrl || stage.customImage) return;
       stage.builtIn = photoUrl;
       stage.image = stage.builtIn;
