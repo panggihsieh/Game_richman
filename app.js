@@ -110,7 +110,7 @@ function makePhotoStageImage(stage, imageSrc) {
         </linearGradient>
       </defs>
       <rect width="320" height="220" rx="22" fill="${stage.color || "#3f72d8"}"/>
-      <image href="${escapeSvg(imageSrc)}" width="320" height="220" preserveAspectRatio="xMidYMid slice" clip-path="url(#photoClip)"/>
+      <image href="${escapeSvg(imageSrc)}" width="320" height="220" preserveAspectRatio="xMidYMin slice" clip-path="url(#photoClip)"/>
       <rect width="320" height="220" rx="22" fill="url(#captionFade)"/>
       <rect x="18" y="17" width="70" height="30" rx="15" fill="rgba(23,33,43,.55)"/>
       <text x="53" y="38" text-anchor="middle" font-family="Microsoft JhengHei, Arial, sans-serif" font-size="18" font-weight="900" fill="white">${escapeSvg(stage.type)}</text>
@@ -386,11 +386,26 @@ function captureAvatar() {
   const player = players.find((item) => item.id === cameraPlayerId);
   if (!player) return;
   const context = avatarCanvas.getContext("2d");
-  context.drawImage(cameraPreview, 0, 0, avatarCanvas.width, avatarCanvas.height);
+  drawCenteredHeadshot(context, cameraPreview, avatarCanvas.width, avatarCanvas.height);
   player.avatar = avatarCanvas.toDataURL("image/png");
   closeCamera();
   renderPlayers();
   renderLeaderboard();
+}
+
+function drawCenteredHeadshot(context, source, width, height) {
+  const sourceWidth = source.videoWidth || source.width;
+  const sourceHeight = source.videoHeight || source.height;
+  if (!sourceWidth || !sourceHeight) return;
+
+  const scale = Math.max(width / sourceWidth, height / sourceHeight);
+  const cropWidth = width / scale;
+  const cropHeight = height / scale;
+  const sourceX = Math.max(0, (sourceWidth - cropWidth) / 2);
+  const sourceY = Math.max(0, (sourceHeight - cropHeight) * 0.32);
+
+  context.clearRect(0, 0, width, height);
+  context.drawImage(source, sourceX, sourceY, cropWidth, cropHeight, 0, 0, width, height);
 }
 
 function updateTurnText() {
