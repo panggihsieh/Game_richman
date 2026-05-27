@@ -246,12 +246,21 @@ body.fullscreen-mode .app {
   padding: 18px;
 }
 
+html:fullscreen .app {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  padding: 18px;
+}
+
 body.fullscreen-mode .setup-panel,
-body.fullscreen-mode .stage-panel {
+body.fullscreen-mode .stage-panel,
+html:fullscreen .setup-panel,
+html:fullscreen .stage-panel {
   display: none;
 }
 
-body.fullscreen-mode .game-area {
+body.fullscreen-mode .game-area,
+html:fullscreen .game-area {
   width: min(100%, 1180px);
   justify-self: center;
 }

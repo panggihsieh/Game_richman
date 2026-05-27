@@ -372,10 +372,14 @@ function rollDice() {
 }
 
 async function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    await document.documentElement.requestFullscreen();
-  } else {
+  const isActive = document.body.classList.contains("fullscreen-mode");
+  document.body.classList.toggle("fullscreen-mode", !isActive);
+  fullscreenToggle.textContent = isActive ? "全螢幕 on/off" : "離開全螢幕";
+
+  if (isActive && document.fullscreenElement) {
     await document.exitFullscreen();
+  } else if (!isActive && !document.fullscreenElement) {
+    await document.documentElement.requestFullscreen();
   }
 }
 
