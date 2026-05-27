@@ -240,6 +240,22 @@ select {
   box-shadow: 0 0 10px rgba(216, 80, 80, 0.38);
 }
 
+body.fullscreen-mode .app {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  padding: 18px;
+}
+
+body.fullscreen-mode .setup-panel,
+body.fullscreen-mode .stage-panel {
+  display: none;
+}
+
+body.fullscreen-mode .game-area {
+  width: min(100%, 1180px);
+  justify-self: center;
+}
+
 h1 {
   margin: 0 0 8px;
   font-size: clamp(28px, 4vw, 54px);

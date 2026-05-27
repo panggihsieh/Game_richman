@@ -379,6 +379,12 @@ async function toggleFullscreen() {
   }
 }
 
+function updateFullscreenMode() {
+  const isFullscreen = Boolean(document.fullscreenElement);
+  document.body.classList.toggle("fullscreen-mode", isFullscreen);
+  fullscreenToggle.textContent = isFullscreen ? "離開全螢幕" : "全螢幕 on/off";
+}
+
 async function openCamera(playerId) {
   cameraPlayerId = playerId;
   try {
@@ -455,6 +461,7 @@ fullscreenToggle.addEventListener("click", () => {
     alert("此瀏覽器無法切換全螢幕，請確認瀏覽器權限。");
   });
 });
+document.addEventListener("fullscreenchange", updateFullscreenMode);
 document.querySelector("#closeCamera").addEventListener("click", closeCamera);
 document.querySelector("#captureAvatar").addEventListener("click", captureAvatar);
 
