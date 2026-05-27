@@ -46,12 +46,27 @@ let players = [];
 let currentTurn = 0;
 let cameraPlayerId = null;
 let cameraStream = null;
+let matchSeconds = 5 * 60;
+let remainingSeconds = matchSeconds;
+let matchTimer = null;
+let matchRunning = false;
+let rolling = false;
+let championPlayerId = null;
+let activeMovingPlayerId = null;
+let audioContext = null;
 
 const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
 const playersList = document.querySelector("#playersList");
 const leaderboard = document.querySelector("#leaderboard");
 const fullscreenToggle = document.querySelector("#fullscreenToggle");
+const matchMinutes = document.querySelector("#matchMinutes");
+const timerWheel = document.querySelector("#timerWheel");
+const timerText = document.querySelector("#timerText");
+const timerHint = document.querySelector("#timerHint");
+const startMatchButton = document.querySelector("#startMatch");
+const centerRollDiceButton = document.querySelector("#centerRollDice");
+const centerDiceFace = document.querySelector("#centerDiceFace");
 const playerCountInput = document.querySelector("#playerCount");
 const titleInput = document.querySelector("#gameTitle");
 const displayTitle = document.querySelector("#displayTitle");
@@ -224,7 +239,7 @@ function renderBoard() {
       .filter((player) => player.position === index)
       .forEach((player, tokenIndex) => {
         const token = document.createElement("span");
-        token.className = "token";
+        token.className = `token${player.id === activeMovingPlayerId ? " walking" : ""}`;
         token.style.background = player.color;
         token.textContent = player.name.trim().charAt(0) || tokenIndex + 1;
         tokens.append(token);
@@ -304,8 +319,14 @@ function renderLeaderboard() {
     .sort((a, b) => b.score - a.score)
     .forEach((player) => {
       const pill = document.createElement("div");
-      pill.className = "leader-pill";
+      pill.className = `leader-pill${player.id === championPlayerId ? " champion" : ""}`;
       pill.innerHTML = `<span class="token" style="background:${player.color}">${escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} 分</span>`;
+      if (player.id === championPlayerId) {
+        const badge = document.createElement("span");
+        badge.className = "champion-gif";
+        badge.textContent = "冠軍";
+        pill.append(badge);
+      }
       leaderboard.append(pill);
     });
 }
@@ -360,15 +381,117 @@ function readImage(file, callback) {
   reader.readAsDataURL(file);
 }
 
-function rollDice() {
-  if (!players.length) return;
+async function rollDice() {
+  if (!players.length || rolling || !matchRunning) return;
+  rolling = true;
   const roll = Math.floor(Math.random() * 6) + 1;
   const player = players[currentTurn];
   diceFace.textContent = roll;
-  player.position = (player.position + roll) % stages.length;
+  centerDiceFace.textContent = roll;
+  activeMovingPlayerId = player.id;
+  for (let step = 0; step < roll; step += 1) {
+    if (!matchRunning) break;
+    player.position = (player.position + 1) % stages.length;
+    playStepSound(step);
+    renderBoard();
+    await wait(260);
+  }
+  if (!matchRunning) {
+    activeMovingPlayerId = null;
+    rolling = false;
+    renderAll();
+    return;
+  }
   player.score += roll;
+  activeMovingPlayerId = null;
   currentTurn = (currentTurn + 1) % players.length;
+  rolling = false;
   renderAll();
+}
+
+function startMatch() {
+  if (matchRunning) return;
+  championPlayerId = null;
+  matchRunning = true;
+  remainingSeconds = matchSeconds;
+  currentTurn = 0;
+  players.forEach((player) => {
+    player.score = 0;
+    player.position = 0;
+  });
+  shuffleStages();
+  document.body.classList.add("fullscreen-mode");
+  fullscreenToggle.textContent = "離開全螢幕";
+  startMatchButton.textContent = "比賽進行中";
+  startMatchButton.disabled = true;
+  centerRollDiceButton.disabled = false;
+  matchMinutes.disabled = true;
+  timerHint.textContent = "比賽進行中，擲骰前進累積積分";
+  updateTimerDisplay();
+  renderAll();
+  matchTimer = window.setInterval(() => {
+    remainingSeconds -= 1;
+    updateTimerDisplay();
+    if (remainingSeconds <= 0) {
+      finishMatch();
+    }
+  }, 1000);
+}
+
+function finishMatch() {
+  matchRunning = false;
+  rolling = false;
+  window.clearInterval(matchTimer);
+  matchTimer = null;
+  championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
+  startMatchButton.textContent = "重新開始比賽";
+  startMatchButton.disabled = false;
+  centerRollDiceButton.disabled = true;
+  matchMinutes.disabled = false;
+  timerHint.textContent = "時間到，最高分為冠軍";
+  renderAll();
+}
+
+function updateMatchDuration() {
+  matchSeconds = Number(matchMinutes.value) * 60;
+  if (!matchRunning) {
+    remainingSeconds = matchSeconds;
+    updateTimerDisplay();
+  }
+}
+
+function updateTimerDisplay() {
+  const minutes = Math.floor(Math.max(0, remainingSeconds) / 60);
+  const seconds = Math.max(0, remainingSeconds) % 60;
+  timerText.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const progress = matchSeconds ? (remainingSeconds / matchSeconds) * 360 : 0;
+  timerWheel.style.setProperty("--timer-angle", `${progress}deg`);
+}
+
+function shuffleStages() {
+  stages = stages
+    .map((stage) => ({ stage, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map((item) => item.stage);
+}
+
+function playStepSound(step) {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = "square";
+  oscillator.frequency.value = step % 2 ? 190 : 145;
+  gain.gain.setValueAtTime(0.045, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.09);
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.09);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function toggleFullscreen() {
@@ -448,11 +571,16 @@ titleInput.addEventListener("input", () => {
 });
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);
+centerRollDiceButton.addEventListener("click", rollDice);
+startMatchButton.addEventListener("click", startMatch);
+matchMinutes.addEventListener("input", updateMatchDuration);
 fullscreenToggle.addEventListener("click", () => {
   toggleFullscreen();
 });
 document.querySelector("#closeCamera").addEventListener("click", closeCamera);
 document.querySelector("#captureAvatar").addEventListener("click", captureAvatar);
 
+centerRollDiceButton.disabled = true;
+updateMatchDuration();
 createPlayers(4);
 loadStagePhotos();

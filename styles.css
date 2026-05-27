@@ -252,7 +252,7 @@ body.fullscreen-mode .stage-panel {
 }
 
 body.fullscreen-mode .game-area {
-  width: min(100%, 1180px);
+  width: min(100%, 1240px);
   justify-self: center;
 }
 
@@ -278,6 +278,90 @@ h1 {
   padding: 6px 10px;
   font-size: 13px;
   background: #fff;
+}
+
+.leader-pill.champion {
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(243, 189, 50, 0.22);
+}
+
+.champion-gif {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #6b3d00;
+  font-size: 12px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffe27a, #fff6c7, #f3bd32);
+  animation: crownPulse 0.9s ease-in-out infinite alternate;
+}
+
+.match-control {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 260px);
+  gap: 14px;
+  align-items: stretch;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.timer-wheel,
+.center-dice {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  justify-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.timer-wheel {
+  --timer-angle: 360deg;
+  background:
+    radial-gradient(circle at center, #fff 0 56%, transparent 57%),
+    conic-gradient(var(--teal) var(--timer-angle), #edf2f7 0);
+}
+
+.timer-wheel strong {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.timer-wheel input {
+  width: min(220px, 100%);
+}
+
+.timer-wheel span {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.center-dice-face {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  color: var(--ink);
+  font-size: 38px;
+  font-weight: 900;
+  background: #fff;
+}
+
+.center-dice button {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.center-dice button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .board {
@@ -365,6 +449,32 @@ h1 {
   font-size: 11px;
   font-weight: 900;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.token.walking {
+  animation: tokenWalk 0.26s ease-in-out infinite alternate;
+}
+
+@keyframes tokenWalk {
+  from {
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    transform: translateY(-7px) scale(1.08);
+  }
+}
+
+@keyframes crownPulse {
+  from {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+
+  to {
+    transform: translateY(-2px) scale(1.08);
+    filter: brightness(1.12);
+  }
 }
 
 .stage-preview {
@@ -465,6 +575,11 @@ canvas {
 
   .leaderboard {
     justify-content: flex-start;
+  }
+
+  .match-control {
+    grid-template-columns: 1fr;
+    max-width: none;
   }
 
   .board {
