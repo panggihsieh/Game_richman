@@ -298,12 +298,17 @@ h1 {
 }
 
 .match-control {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 260px);
   gap: 14px;
   align-items: stretch;
+  grid-column: 2 / 7;
+  grid-row: 2 / 7;
+  place-self: center;
   max-width: 620px;
-  margin: 0 auto;
+  width: min(100%, 620px);
 }
 
 .timer-wheel,
@@ -383,6 +388,7 @@ h1 {
   font-size: clamp(42px, 7vw, 96px);
   font-weight: 900;
   letter-spacing: 0;
+  pointer-events: none;
 }
 
 .tile {
@@ -579,6 +585,8 @@ canvas {
 
   .match-control {
     grid-template-columns: 1fr;
+    grid-column: 1 / -1;
+    grid-row: auto;
     max-width: none;
   }
 

@@ -219,7 +219,7 @@ function renderAll() {
 }
 
 function renderBoard() {
-  board.innerHTML = "";
+  board.querySelectorAll(".tile").forEach((tile) => tile.remove());
   stages.forEach((stage, index) => {
     const tile = document.createElement("article");
     tile.className = `tile${index === 0 ? " start" : ""}${players.some((player) => player.position === index) ? " active" : ""}`;

@@ -46,21 +46,21 @@
           </div>
         </header>
 
-        <section class="match-control" aria-label="比賽控制">
-          <div class="timer-wheel" id="timerWheel">
-            <label for="matchMinutes">比賽時間</label>
-            <strong id="timerText">05:00</strong>
-            <input id="matchMinutes" type="range" min="1" max="30" value="5" />
-            <span id="timerHint">拖曳調整分鐘，時間到最高分為冠軍</span>
-          </div>
-          <div class="center-dice">
-            <div id="centerDiceFace" class="center-dice-face">1</div>
-            <button id="startMatch" type="button">正式開始比賽</button>
-            <button id="centerRollDice" type="button">擲骰前進</button>
+        <section id="board" class="board" aria-label="大富翁棋盤">
+          <div class="match-control" aria-label="比賽控制">
+            <div class="timer-wheel" id="timerWheel">
+              <label for="matchMinutes">比賽時間</label>
+              <strong id="timerText">05:00</strong>
+              <input id="matchMinutes" type="range" min="1" max="30" value="5" />
+              <span id="timerHint">拖曳調整分鐘，時間到最高分為冠軍</span>
+            </div>
+            <div class="center-dice">
+              <div id="centerDiceFace" class="center-dice-face">1</div>
+              <button id="startMatch" type="button">正式開始比賽</button>
+              <button id="centerRollDice" type="button">擲骰前進</button>
+            </div>
           </div>
         </section>
-
-        <section id="board" class="board" aria-label="大富翁棋盤"></section>
       </main>
 
       <aside class="stage-panel">
