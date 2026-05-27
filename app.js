@@ -51,6 +51,7 @@ const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
 const playersList = document.querySelector("#playersList");
 const leaderboard = document.querySelector("#leaderboard");
+const fullscreenToggle = document.querySelector("#fullscreenToggle");
 const playerCountInput = document.querySelector("#playerCount");
 const titleInput = document.querySelector("#gameTitle");
 const displayTitle = document.querySelector("#displayTitle");
@@ -233,9 +234,9 @@ function renderBoard() {
     name.className = "tile-name";
     const title = document.createElement("span");
     title.textContent = `${index + 1}. ${stage.name}`;
-    name.append(title, tokens);
+    name.append(title);
 
-    tile.append(img, name);
+    tile.append(img, tokens, name);
     board.append(tile);
   });
 }
@@ -370,6 +371,14 @@ function rollDice() {
   renderAll();
 }
 
+async function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    await document.documentElement.requestFullscreen();
+  } else {
+    await document.exitFullscreen();
+  }
+}
+
 async function openCamera(playerId) {
   cameraPlayerId = playerId;
   try {
@@ -441,6 +450,11 @@ titleInput.addEventListener("input", () => {
 });
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);
+fullscreenToggle.addEventListener("click", () => {
+  toggleFullscreen().catch(() => {
+    alert("此瀏覽器無法切換全螢幕，請確認瀏覽器權限。");
+  });
+});
 document.querySelector("#closeCamera").addEventListener("click", closeCamera);
 document.querySelector("#captureAvatar").addEventListener("click", captureAvatar);
 
