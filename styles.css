@@ -298,7 +298,12 @@ h1 {
 }
 
 .tile-name {
-  padding: 5px 7px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 6px;
   color: #fff;
   font-size: 12px;
   font-weight: 800;
@@ -306,25 +311,19 @@ h1 {
 }
 
 .tokens {
-  position: absolute;
-  right: auto;
-  bottom: 34px;
-  left: 50%;
+  position: static;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px;
   justify-content: center;
-  width: max-content;
-  max-width: calc(100% - 12px);
-  transform: translateX(-50%);
-  pointer-events: none;
+  max-width: 52px;
 }
 
 .token {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #fff;
   border-radius: 50%;
   color: #fff;

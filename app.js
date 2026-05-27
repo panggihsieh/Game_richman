@@ -231,9 +231,11 @@ function renderBoard() {
 
     const name = document.createElement("div");
     name.className = "tile-name";
-    name.textContent = `${index + 1}. ${stage.name}`;
+    const title = document.createElement("span");
+    title.textContent = `${index + 1}. ${stage.name}`;
+    name.append(title, tokens);
 
-    tile.append(img, tokens, name);
+    tile.append(img, name);
     board.append(tile);
   });
 }
