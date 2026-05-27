@@ -371,22 +371,10 @@ function rollDice() {
   renderAll();
 }
 
-async function toggleFullscreen() {
+function toggleFullscreen() {
   const isActive = document.body.classList.contains("fullscreen-mode");
   document.body.classList.toggle("fullscreen-mode", !isActive);
   fullscreenToggle.textContent = isActive ? "全螢幕 on/off" : "離開全螢幕";
-
-  if (isActive && document.fullscreenElement) {
-    await document.exitFullscreen();
-  } else if (!isActive && !document.fullscreenElement) {
-    await document.documentElement.requestFullscreen();
-  }
-}
-
-function updateFullscreenMode() {
-  const isFullscreen = Boolean(document.fullscreenElement);
-  document.body.classList.toggle("fullscreen-mode", isFullscreen);
-  fullscreenToggle.textContent = isFullscreen ? "離開全螢幕" : "全螢幕 on/off";
 }
 
 async function openCamera(playerId) {
@@ -461,11 +449,8 @@ titleInput.addEventListener("input", () => {
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);
 fullscreenToggle.addEventListener("click", () => {
-  toggleFullscreen().catch(() => {
-    alert("此瀏覽器無法切換全螢幕，請確認瀏覽器權限。");
-  });
+  toggleFullscreen();
 });
-document.addEventListener("fullscreenchange", updateFullscreenMode);
 document.querySelector("#closeCamera").addEventListener("click", closeCamera);
 document.querySelector("#captureAvatar").addEventListener("click", captureAvatar);
 
