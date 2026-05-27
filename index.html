@@ -50,13 +50,14 @@
           <div class="match-control" aria-label="比賽控制">
             <div class="timer-wheel" id="timerWheel">
               <label for="matchMinutes">比賽時間</label>
-              <strong id="timerText">05:00</strong>
-              <input id="matchMinutes" type="range" min="1" max="30" value="5" />
+              <strong id="timerText">03:00</strong>
+              <input id="matchMinutes" type="range" min="1" max="30" value="3" />
               <span id="timerHint">拖曳調整分鐘，時間到最高分為冠軍</span>
             </div>
             <div class="center-dice">
               <div id="centerDiceFace" class="center-dice-face">1</div>
               <button id="startMatch" type="button">正式開始比賽</button>
+              <button id="emergencyStop" type="button">緊急停止</button>
               <button id="centerRollDice" type="button">擲骰前進</button>
             </div>
           </div>

@@ -76,7 +76,7 @@ let players = [];
 let currentTurn = 0;
 let cameraPlayerId = null;
 let cameraStream = null;
-let matchSeconds = 5 * 60;
+let matchSeconds = 3 * 60;
 let remainingSeconds = matchSeconds;
 let matchTimer = null;
 let matchRunning = false;
@@ -84,6 +84,9 @@ let rolling = false;
 let championPlayerId = null;
 let activeMovingPlayerId = null;
 let audioContext = null;
+let landingStageId = null;
+let landingEffectTimeout = null;
+let leaderboardPreviousOrder = [];
 
 const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
@@ -95,6 +98,7 @@ const timerWheel = document.querySelector("#timerWheel");
 const timerText = document.querySelector("#timerText");
 const timerHint = document.querySelector("#timerHint");
 const startMatchButton = document.querySelector("#startMatch");
+const emergencyStopButton = document.querySelector("#emergencyStop");
 const centerRollDiceButton = document.querySelector("#centerRollDice");
 const centerDiceFace = document.querySelector("#centerDiceFace");
 const playerCountInput = document.querySelector("#playerCount");
@@ -254,7 +258,7 @@ function renderBoard() {
   board.querySelectorAll(".tile").forEach((tile) => tile.remove());
   stages.forEach((stage, index) => {
     const tile = document.createElement("article");
-    tile.className = `tile${index === 0 ? " start" : ""}${players.some((player) => player.position === index) ? " active" : ""}`;
+    tile.className = `tile${index === 0 ? " start" : ""}${players.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
     const position = boardPositions[index];
     if (position) {
       tile.style.gridRow = position[0];
@@ -459,6 +463,7 @@ function startMatch() {
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
   startMatchButton.disabled = true;
+  emergencyStopButton.disabled = false;
   centerRollDiceButton.disabled = false;
   matchMinutes.disabled = true;
   timerHint.textContent = "比賽進行中，擲骰前進累積積分";
@@ -481,9 +486,36 @@ function finishMatch() {
   championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
   startMatchButton.textContent = "重新開始比賽";
   startMatchButton.disabled = false;
+  emergencyStopButton.disabled = true;
   centerRollDiceButton.disabled = true;
   matchMinutes.disabled = false;
   timerHint.textContent = "時間到，最高分為冠軍";
+  renderAll();
+}
+
+function emergencyStopMatch() {
+  matchRunning = false;
+  rolling = false;
+  activeMovingPlayerId = null;
+  championPlayerId = null;
+  currentTurn = 0;
+  window.clearInterval(matchTimer);
+  matchTimer = null;
+  remainingSeconds = matchSeconds;
+  diceFace.textContent = "1";
+  centerDiceFace.textContent = "1";
+  stages = originalStages.map((stage) => ({ ...stage }));
+  players.forEach((player) => {
+    player.score = 0;
+    player.position = 0;
+  });
+  startMatchButton.textContent = "正式開始比賽";
+  startMatchButton.disabled = false;
+  emergencyStopButton.disabled = true;
+  centerRollDiceButton.disabled = true;
+  matchMinutes.disabled = false;
+  timerHint.textContent = "比賽已緊急停止，分數與位置已歸零";
+  updateTimerDisplay();
   renderAll();
 }
 
@@ -522,7 +554,7 @@ function playStepSound(step) {
   const gain = audioContext.createGain();
   oscillator.type = "square";
   oscillator.frequency.value = step % 2 ? 190 : 145;
-  gain.gain.setValueAtTime(0.045, audioContext.currentTime);
+  gain.gain.setValueAtTime(0.135, audioContext.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.09);
   oscillator.connect(gain);
   gain.connect(audioContext.destination);
@@ -605,6 +637,380 @@ function escapeSvg(value) {
     .replaceAll(">", "&gt;");
 }
 
+/*
+
+function renderLeaderboard() {
+  leaderboard.innerHTML = "";
+  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const previousOrder = leaderboardPreviousOrder;
+  const risingPlayerId = previousOrder.length === sortedPlayers.length
+    ? sortedPlayers.find((player, index) => {
+      const previousIndex = previousOrder.indexOf(player.id);
+      return previousIndex !== -1 && previousIndex > index;
+    })?.id
+    : null;
+
+  sortedPlayers.forEach((player) => {
+    const pill = document.createElement("div");
+    pill.className = `leader-pill${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
+    pill.innerHTML = `<span class="token" style="background:${player.color}">${escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} 分</span>`;
+    if (player.id === championPlayerId) {
+      const badge = document.createElement("span");
+      badge.className = "champion-gif";
+      badge.textContent = "??";
+      pill.append(badge);
+    }
+    leaderboard.append(pill);
+  });
+
+  leaderboardPreviousOrder = sortedPlayers.map((player) => player.id);
+}
+
+async function rollDice() {
+  if (!players.length || rolling || !matchRunning) return;
+  rolling = true;
+  const roll = Math.floor(Math.random() * 6) + 1;
+  const player = players[currentTurn];
+  await animateDiceRoll(roll);
+  activeMovingPlayerId = player.id;
+  for (let step = 0; step < roll; step += 1) {
+    if (!matchRunning) break;
+    player.position = (player.position + 1) % stages.length;
+    playStepSound(step);
+    renderBoard();
+    await wait(260);
+  }
+  if (!matchRunning) {
+    activeMovingPlayerId = null;
+    rolling = false;
+    renderAll();
+    return;
+  }
+  triggerLandingEffect(player.position);
+  await wait(420);
+  player.score += roll;
+  activeMovingPlayerId = null;
+  currentTurn = (currentTurn + 1) % players.length;
+  rolling = false;
+  renderAll();
+}
+
+function startMatch() {
+  if (matchRunning) return;
+  championPlayerId = null;
+  landingStageId = null;
+  window.clearTimeout(landingEffectTimeout);
+  landingEffectTimeout = null;
+  matchRunning = true;
+  remainingSeconds = matchSeconds;
+  currentTurn = 0;
+  players.forEach((player) => {
+    player.score = 0;
+    player.position = 0;
+  });
+  shuffleStages();
+  document.body.classList.add("fullscreen-mode");
+  fullscreenToggle.textContent = "?ａ??刻撟?;
+  startMatchButton.textContent = "瘥魚?脰?銝?;
+  startMatchButton.disabled = true;
+  emergencyStopButton.disabled = false;
+  centerRollDiceButton.disabled = false;
+  matchMinutes.disabled = true;
+  timerHint.textContent = "瘥魚?脰?銝哨??脤狐?脩敞蝛???;
+  updateTimerDisplay();
+  renderAll();
+  matchTimer = window.setInterval(() => {
+    remainingSeconds -= 1;
+    updateTimerDisplay();
+    if (remainingSeconds <= 0) {
+      finishMatch();
+    }
+  }, 1000);
+}
+
+function finishMatch() {
+  matchRunning = false;
+  rolling = false;
+  activeMovingPlayerId = null;
+  window.clearInterval(matchTimer);
+  matchTimer = null;
+  championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
+  startMatchButton.textContent = "???瘥魚";
+  startMatchButton.disabled = false;
+  emergencyStopButton.disabled = true;
+  centerRollDiceButton.disabled = true;
+  matchMinutes.disabled = false;
+  timerHint.textContent = "???堆??擃??箏?頠?;
+  updateTimerDisplay();
+  renderAll();
+}
+
+function emergencyStopMatch() {
+  matchRunning = false;
+  rolling = false;
+  activeMovingPlayerId = null;
+  championPlayerId = null;
+  landingStageId = null;
+  window.clearTimeout(landingEffectTimeout);
+  landingEffectTimeout = null;
+  currentTurn = 0;
+  window.clearInterval(matchTimer);
+  matchTimer = null;
+  remainingSeconds = matchSeconds;
+  diceFace.textContent = "1";
+  centerDiceFace.textContent = "1";
+  stages = originalStages.map((stage) => ({ ...stage }));
+  players.forEach((player) => {
+    player.score = 0;
+    player.position = 0;
+  });
+  startMatchButton.textContent = "甇????瘥魚";
+  startMatchButton.disabled = false;
+  emergencyStopButton.disabled = true;
+  centerRollDiceButton.disabled = true;
+  matchMinutes.disabled = false;
+  timerHint.textContent = "瘥魚撌脩??亙?甇ｇ????蝵桀歇甇賊";
+  updateTimerDisplay();
+  renderAll();
+}
+
+function updateTimerDisplay() {
+  const minutes = Math.floor(Math.max(0, remainingSeconds) / 60);
+  const seconds = Math.max(0, remainingSeconds) % 60;
+  timerText.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const progress = matchSeconds ? (remainingSeconds / matchSeconds) * 360 : 0;
+  timerWheel.style.setProperty("--timer-angle", `${progress}deg`);
+  const inDanger = matchRunning && remainingSeconds <= 10;
+  const inCritical = matchRunning && remainingSeconds <= 3;
+  timerWheel.classList.toggle("danger", inDanger);
+  timerWheel.classList.toggle("critical", inCritical);
+  document.body.classList.toggle("danger-mode", inDanger);
+  document.body.classList.toggle("critical-mode", inCritical);
+}
+
+async function animateDiceRoll(finalValue) {
+  diceFace.classList.add("rolling");
+  centerDiceFace.classList.add("rolling");
+  for (let tick = 0; tick < 10; tick += 1) {
+    const face = Math.floor(Math.random() * 6) + 1;
+    diceFace.textContent = face;
+    centerDiceFace.textContent = face;
+    await wait(70);
+  }
+  diceFace.textContent = finalValue;
+  centerDiceFace.textContent = finalValue;
+  diceFace.classList.remove("rolling");
+  centerDiceFace.classList.remove("rolling");
+  diceFace.classList.remove("result-pop");
+  centerDiceFace.classList.remove("result-pop");
+  void diceFace.offsetWidth;
+  void centerDiceFace.offsetWidth;
+  diceFace.classList.add("result-pop");
+  centerDiceFace.classList.add("result-pop");
+  window.setTimeout(() => {
+    diceFace.classList.remove("result-pop");
+    centerDiceFace.classList.remove("result-pop");
+  }, 420);
+}
+
+function triggerLandingEffect(stageId) {
+  landingStageId = stageId;
+  window.clearTimeout(landingEffectTimeout);
+  renderBoard();
+  landingEffectTimeout = window.setTimeout(() => {
+    landingStageId = null;
+    landingEffectTimeout = null;
+    renderBoard();
+  }, 650);
+}
+
+*/
+
+function renderLeaderboard() {
+  leaderboard.innerHTML = "";
+  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const previousOrder = leaderboardPreviousOrder;
+  const risingPlayerId = previousOrder.length === sortedPlayers.length
+    ? sortedPlayers.find((player, index) => {
+      const previousIndex = previousOrder.indexOf(player.id);
+      return previousIndex !== -1 && previousIndex > index;
+    })?.id
+    : null;
+
+  sortedPlayers.forEach((player) => {
+    const pill = document.createElement("div");
+    pill.className = `leader-pill${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
+    pill.innerHTML = `<span class="token" style="background:${player.color}">${escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} pts</span>`;
+    if (player.id === championPlayerId) {
+      const badge = document.createElement("span");
+      badge.className = "champion-gif";
+      badge.textContent = "WIN";
+      pill.append(badge);
+    }
+    leaderboard.append(pill);
+  });
+
+  leaderboardPreviousOrder = sortedPlayers.map((player) => player.id);
+}
+
+async function rollDice() {
+  if (!players.length || rolling || !matchRunning) return;
+  rolling = true;
+  const roll = Math.floor(Math.random() * 6) + 1;
+  const player = players[currentTurn];
+  await animateDiceRoll(roll);
+  activeMovingPlayerId = player.id;
+  for (let step = 0; step < roll; step += 1) {
+    if (!matchRunning) break;
+    player.position = (player.position + 1) % stages.length;
+    playStepSound(step);
+    renderBoard();
+    await wait(260);
+  }
+  if (!matchRunning) {
+    activeMovingPlayerId = null;
+    rolling = false;
+    renderAll();
+    return;
+  }
+  triggerLandingEffect(player.position);
+  await wait(420);
+  player.score += roll;
+  activeMovingPlayerId = null;
+  currentTurn = (currentTurn + 1) % players.length;
+  rolling = false;
+  renderAll();
+}
+
+function startMatch() {
+  if (matchRunning) return;
+  championPlayerId = null;
+  landingStageId = null;
+  window.clearTimeout(landingEffectTimeout);
+  landingEffectTimeout = null;
+  matchRunning = true;
+  remainingSeconds = matchSeconds;
+  currentTurn = 0;
+  players.forEach((player) => {
+    player.score = 0;
+    player.position = 0;
+  });
+  shuffleStages();
+  document.body.classList.add("fullscreen-mode");
+  fullscreenToggle.textContent = "Exit fullscreen";
+  startMatchButton.textContent = "Match running";
+  startMatchButton.disabled = true;
+  emergencyStopButton.disabled = false;
+  centerRollDiceButton.disabled = false;
+  matchMinutes.disabled = true;
+  timerHint.textContent = "Match live. Roll the dice before time runs out.";
+  updateTimerDisplay();
+  renderAll();
+  matchTimer = window.setInterval(() => {
+    remainingSeconds -= 1;
+    updateTimerDisplay();
+    if (remainingSeconds <= 0) {
+      finishMatch();
+    }
+  }, 1000);
+}
+
+function finishMatch() {
+  matchRunning = false;
+  rolling = false;
+  activeMovingPlayerId = null;
+  window.clearInterval(matchTimer);
+  matchTimer = null;
+  championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
+  startMatchButton.textContent = "Start next match";
+  startMatchButton.disabled = false;
+  emergencyStopButton.disabled = true;
+  centerRollDiceButton.disabled = true;
+  matchMinutes.disabled = false;
+  timerHint.textContent = "Time is up. Check the final ranking.";
+  updateTimerDisplay();
+  renderAll();
+}
+
+function emergencyStopMatch() {
+  matchRunning = false;
+  rolling = false;
+  activeMovingPlayerId = null;
+  championPlayerId = null;
+  landingStageId = null;
+  window.clearTimeout(landingEffectTimeout);
+  landingEffectTimeout = null;
+  currentTurn = 0;
+  window.clearInterval(matchTimer);
+  matchTimer = null;
+  remainingSeconds = matchSeconds;
+  diceFace.textContent = "1";
+  centerDiceFace.textContent = "1";
+  stages = originalStages.map((stage) => ({ ...stage }));
+  players.forEach((player) => {
+    player.score = 0;
+    player.position = 0;
+  });
+  startMatchButton.textContent = "Start match";
+  startMatchButton.disabled = false;
+  emergencyStopButton.disabled = true;
+  centerRollDiceButton.disabled = true;
+  matchMinutes.disabled = false;
+  timerHint.textContent = "Match stopped. Scores reset and board restored.";
+  updateTimerDisplay();
+  renderAll();
+}
+
+function updateTimerDisplay() {
+  const minutes = Math.floor(Math.max(0, remainingSeconds) / 60);
+  const seconds = Math.max(0, remainingSeconds) % 60;
+  timerText.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const progress = matchSeconds ? (remainingSeconds / matchSeconds) * 360 : 0;
+  timerWheel.style.setProperty("--timer-angle", `${progress}deg`);
+  const inDanger = matchRunning && remainingSeconds <= 10;
+  const inCritical = matchRunning && remainingSeconds <= 3;
+  timerWheel.classList.toggle("danger", inDanger);
+  timerWheel.classList.toggle("critical", inCritical);
+  document.body.classList.toggle("danger-mode", inDanger);
+  document.body.classList.toggle("critical-mode", inCritical);
+}
+
+async function animateDiceRoll(finalValue) {
+  diceFace.classList.add("rolling");
+  centerDiceFace.classList.add("rolling");
+  for (let tick = 0; tick < 10; tick += 1) {
+    const face = Math.floor(Math.random() * 6) + 1;
+    diceFace.textContent = face;
+    centerDiceFace.textContent = face;
+    await wait(70);
+  }
+  diceFace.textContent = finalValue;
+  centerDiceFace.textContent = finalValue;
+  diceFace.classList.remove("rolling");
+  centerDiceFace.classList.remove("rolling");
+  diceFace.classList.remove("result-pop");
+  centerDiceFace.classList.remove("result-pop");
+  void diceFace.offsetWidth;
+  void centerDiceFace.offsetWidth;
+  diceFace.classList.add("result-pop");
+  centerDiceFace.classList.add("result-pop");
+  window.setTimeout(() => {
+    diceFace.classList.remove("result-pop");
+    centerDiceFace.classList.remove("result-pop");
+  }, 420);
+}
+
+function triggerLandingEffect(stageId) {
+  landingStageId = stageId;
+  window.clearTimeout(landingEffectTimeout);
+  renderBoard();
+  landingEffectTimeout = window.setTimeout(() => {
+    landingStageId = null;
+    landingEffectTimeout = null;
+    renderBoard();
+  }, 650);
+}
+
 titleInput.addEventListener("input", () => {
   displayTitle.textContent = titleInput.value || "線上大富翁";
   document.title = titleInput.value || "線上大富翁";
@@ -613,6 +1019,7 @@ titleInput.addEventListener("input", () => {
 document.querySelector("#rollDice").addEventListener("click", rollDice);
 centerRollDiceButton.addEventListener("click", rollDice);
 startMatchButton.addEventListener("click", startMatch);
+emergencyStopButton.addEventListener("click", emergencyStopMatch);
 matchMinutes.addEventListener("input", updateMatchDuration);
 fullscreenToggle.addEventListener("click", () => {
   toggleFullscreen();
@@ -621,6 +1028,7 @@ document.querySelector("#closeCamera").addEventListener("click", closeCamera);
 document.querySelector("#captureAvatar").addEventListener("click", captureAvatar);
 
 centerRollDiceButton.disabled = true;
+emergencyStopButton.disabled = true;
 updateMatchDuration();
 createPlayers(4);
 loadStagePhotos();

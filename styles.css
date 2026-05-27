@@ -68,7 +68,7 @@ select {
 
 .app {
   display: grid;
-  grid-template-columns: 310px minmax(640px, 1fr) 320px;
+  grid-template-columns: minmax(240px, 310px) minmax(0, 1fr) minmax(260px, 320px);
   gap: 18px;
   min-height: 100vh;
   padding: 18px;
@@ -76,6 +76,7 @@ select {
 
 .setup-panel,
 .stage-panel {
+  min-width: 0;
   overflow: auto;
   max-height: calc(100vh - 36px);
   border: 1px solid var(--line);
@@ -133,6 +134,16 @@ select {
   background: #fff;
 }
 
+.dice-face.rolling,
+.center-dice-face.rolling {
+  animation: diceRolling 0.14s linear infinite;
+}
+
+.dice-face.result-pop,
+.center-dice-face.result-pop {
+  animation: diceResultPop 0.38s ease-out;
+}
+
 .hint {
   min-height: 22px;
   margin: 8px 0 0;
@@ -148,6 +159,7 @@ select {
 
 .player-card,
 .stage-card {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -185,7 +197,7 @@ select {
 .score-row,
 .image-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   margin-top: 10px;
 }
@@ -285,6 +297,12 @@ h1 {
   background: #fff;
 }
 
+.leader-pill.rank-up {
+  border-color: rgba(243, 189, 50, 0.9);
+  box-shadow: 0 0 0 3px rgba(243, 189, 50, 0.2);
+  animation: leaderboardJump 0.56s ease-out;
+}
+
 .leader-pill.champion {
   border-color: var(--yellow);
   box-shadow: 0 0 0 3px rgba(243, 189, 50, 0.22);
@@ -336,6 +354,17 @@ h1 {
     conic-gradient(var(--teal) var(--timer-angle), #edf2f7 0);
 }
 
+.timer-wheel.danger {
+  background:
+    radial-gradient(circle at center, #fff 0 56%, transparent 57%),
+    conic-gradient(var(--red) var(--timer-angle), #fde8e8 0);
+  box-shadow: 0 0 0 4px rgba(216, 80, 80, 0.16), var(--shadow);
+}
+
+.timer-wheel.critical {
+  animation: dangerPulse 0.72s ease-in-out infinite alternate;
+}
+
 .timer-wheel strong {
   font-size: 24px;
   line-height: 1;
@@ -378,6 +407,12 @@ h1 {
   box-shadow: 0 10px 24px rgba(216, 80, 80, 0.28);
 }
 
+#emergencyStop {
+  color: #fff;
+  font-weight: 900;
+  background: #9f1f1f;
+}
+
 .center-dice button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -386,12 +421,13 @@ h1 {
 .board {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(8, minmax(74px, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   grid-template-rows: repeat(4, minmax(74px, 1fr));
   gap: 8px;
-  align-self: stretch;
+  align-self: start;
   aspect-ratio: 16 / 9;
-  width: min(100%, calc((100vh - 170px) * 16 / 9));
+  width: 100%;
+  max-width: calc((100vh - 170px) * 16 / 9);
   min-height: 0;
   max-height: calc(100vh - 170px);
   justify-self: center;
@@ -427,6 +463,16 @@ h1 {
 
 .tile.active {
   outline: 5px solid rgba(63, 114, 216, 0.26);
+}
+
+.tile.landing {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 6px rgba(243, 189, 50, 0.24), 0 14px 34px rgba(243, 189, 50, 0.34);
+  animation: landingFlash 0.65s ease-out;
+}
+
+.tile.landing .tile-name {
+  background: linear-gradient(90deg, rgba(243, 189, 50, 0.98), rgba(216, 80, 80, 0.9));
 }
 
 .tile img {
@@ -489,6 +535,66 @@ h1 {
   }
 }
 
+@keyframes diceRolling {
+  from {
+    transform: rotate(-6deg) scale(0.96);
+  }
+
+  to {
+    transform: rotate(6deg) scale(1.05);
+  }
+}
+
+@keyframes diceResultPop {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 rgba(243, 189, 50, 0);
+  }
+
+  45% {
+    transform: scale(1.24);
+    box-shadow: 0 0 0 12px rgba(243, 189, 50, 0.2);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(243, 189, 50, 0);
+  }
+}
+
+@keyframes landingFlash {
+  0% {
+    transform: scale(0.96);
+    filter: saturate(1);
+  }
+
+  40% {
+    transform: scale(1.08);
+    filter: saturate(1.24) brightness(1.12);
+  }
+
+  100% {
+    transform: scale(1.04);
+    filter: saturate(1);
+  }
+}
+
+@keyframes leaderboardJump {
+  0% {
+    transform: translateY(10px) scale(0.96);
+    opacity: 0.7;
+  }
+
+  55% {
+    transform: translateY(-4px) scale(1.05);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes crownPulse {
   from {
     transform: translateY(0) scale(1);
@@ -499,6 +605,41 @@ h1 {
     transform: translateY(-2px) scale(1.08);
     filter: brightness(1.12);
   }
+}
+
+@keyframes dangerPulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 0 0 4px rgba(216, 80, 80, 0.16), var(--shadow);
+  }
+
+  to {
+    transform: scale(1.03);
+    box-shadow: 0 0 0 9px rgba(216, 80, 80, 0.24), 0 18px 40px rgba(216, 80, 80, 0.24);
+  }
+}
+
+@keyframes criticalScreenFlash {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 0.8;
+  }
+}
+
+body.danger-mode .board {
+  box-shadow: 0 0 0 5px rgba(216, 80, 80, 0.1);
+}
+
+body.critical-mode::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 12px rgba(216, 80, 80, 0.32);
+  animation: criticalScreenFlash 0.45s ease-in-out infinite alternate;
 }
 
 .stage-preview {
