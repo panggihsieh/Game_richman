@@ -48,11 +48,9 @@ let cameraPlayerId = null;
 let cameraStream = null;
 
 const board = document.querySelector("#board");
-const gameArea = document.querySelector(".game-area");
 const stageEditor = document.querySelector("#stageEditor");
 const playersList = document.querySelector("#playersList");
 const leaderboard = document.querySelector("#leaderboard");
-const fullscreenToggle = document.querySelector("#fullscreenToggle");
 const playerCountInput = document.querySelector("#playerCount");
 const titleInput = document.querySelector("#gameTitle");
 const displayTitle = document.querySelector("#displayTitle");
@@ -372,18 +370,6 @@ function rollDice() {
   renderAll();
 }
 
-async function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    await gameArea.requestFullscreen();
-  } else {
-    await document.exitFullscreen();
-  }
-}
-
-function updateFullscreenButton() {
-  fullscreenToggle.textContent = document.fullscreenElement === gameArea ? "離開全螢幕" : "全螢幕 on/off";
-}
-
 async function openCamera(playerId) {
   cameraPlayerId = playerId;
   try {
@@ -455,12 +441,6 @@ titleInput.addEventListener("input", () => {
 });
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);
-fullscreenToggle.addEventListener("click", () => {
-  toggleFullscreen().catch(() => {
-    alert("此瀏覽器無法切換全螢幕，請確認瀏覽器權限。");
-  });
-});
-document.addEventListener("fullscreenchange", updateFullscreenButton);
 document.querySelector("#closeCamera").addEventListener("click", closeCamera);
 document.querySelector("#captureAvatar").addEventListener("click", captureAvatar);
 

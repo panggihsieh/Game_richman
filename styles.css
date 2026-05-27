@@ -223,23 +223,6 @@ select {
   border-bottom: 4px solid var(--ink);
 }
 
-.game-header-tools {
-  display: grid;
-  gap: 10px;
-  justify-items: end;
-  margin-bottom: 12px;
-}
-
-.fullscreen-toggle {
-  border: 2px solid var(--red);
-  border-radius: 0;
-  padding: 8px 18px;
-  color: var(--red);
-  font-weight: 900;
-  background: #fff;
-  box-shadow: 0 0 10px rgba(216, 80, 80, 0.38);
-}
-
 h1 {
   margin: 0 0 8px;
   font-size: clamp(28px, 4vw, 54px);
@@ -251,6 +234,7 @@ h1 {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
 .leader-pill {
@@ -272,22 +256,6 @@ h1 {
   gap: 8px;
   align-self: stretch;
   min-height: 660px;
-}
-
-.game-area:fullscreen {
-  width: 100vw;
-  height: 100vh;
-  padding: 20px;
-  overflow: auto;
-  background:
-    linear-gradient(90deg, rgba(22, 143, 139, 0.08) 1px, transparent 1px),
-    linear-gradient(rgba(216, 80, 80, 0.08) 1px, transparent 1px),
-    #f6f3ec;
-  background-size: 28px 28px;
-}
-
-.game-area:fullscreen .board {
-  min-height: 0;
 }
 
 .board::before {
