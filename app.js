@@ -30,7 +30,31 @@ const boardPositions = [
   [3, 1], [2, 1]
 ];
 
+const localStageImages = [
+  "assets/stages/01-formosan-black-bear.jpg",
+  "assets/stages/02-taiwan-blue-magpie.jpg",
+  "assets/stages/03-formosan-sika-deer.jpg",
+  "assets/stages/04-taiwan-lily.jpg",
+  "assets/stages/05-formosan-landlocked-salmon.jpg",
+  "assets/stages/06-formosan-rock-macaque.jpg",
+  "assets/stages/07-hygrophila-pogonocalyx.jpg",
+  "assets/stages/08-broad-tailed-swallowtail.jpg",
+  "assets/stages/09-formosan-salamander.jpg",
+  "assets/stages/10-taiwan-pleione.jpg",
+  "assets/stages/11-golden-apple-snail.jpg",
+  "assets/stages/12-nile-tilapia.jpg",
+  "assets/stages/13-mile-a-minute-weed.jpg",
+  "assets/stages/14-red-swamp-crayfish.jpg",
+  "assets/stages/15-green-iguana.jpg",
+  "assets/stages/16-ornate-narrow-mouthed-frog.jpg",
+  "assets/stages/17-red-imported-fire-ant.jpg",
+  "assets/stages/18-bidens-pilosa.jpg",
+  "assets/stages/19-common-myna.jpg",
+  "assets/stages/20-suckermouth-catfish.jpg"
+];
+
 function createStage(item, index) {
+  const builtIn = localStageImages[index] || makeStageImage(item);
   return {
     id: index,
     name: item.name,
@@ -38,9 +62,9 @@ function createStage(item, index) {
     color: item.color,
     label: item.label,
     type: item.type,
-    builtIn: makeStageImage(item),
-    image: makeStageImage(item),
-    boardImage: makeStageImage(item),
+    builtIn,
+    image: builtIn,
+    boardImage: builtIn,
     customImage: ""
   };
 }
@@ -147,6 +171,7 @@ async function loadStagePhotos() {
   if (!window.fetch) return;
   await Promise.all(stages.map(async (stage) => {
     try {
+      if (localStageImages[stage.id]) return;
       const query = encodeURIComponent(stage.scientific || stage.label);
       const response = await fetch(`https://api.inaturalist.org/v1/taxa?q=${query}&per_page=1`);
       if (!response.ok) return;

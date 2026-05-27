@@ -28,3 +28,9 @@
 
 - `app.js`: `loadStagePhotos()` 中的圖片來源選擇。
 - `styles.css`: `.tile`、`.tile img`、`.stage-preview img`、`.avatar img` 的版面與 `object-fit` 設定。
+
+### 本機圖片資產
+
+- 生物圖片已下載到 `assets/stages/`，GitHub Pages 會優先使用這些本機圖片。
+- `scripts/download-stage-images.mjs` 可重新從 iNaturalist 下載 20 張關卡圖片。
+- 若要替換圖片，請保持 `assets/stages/` 內的檔名不變，或同步更新 `app.js` 的 `localStageImages` 清單。
