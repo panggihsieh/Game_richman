@@ -307,12 +307,17 @@ h1 {
 
 .tokens {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  right: 6px;
+  right: auto;
+  bottom: 34px;
+  left: 50%;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100% - 12px);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .token {
