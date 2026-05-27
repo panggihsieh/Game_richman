@@ -288,7 +288,8 @@ h1 {
 .tile {
   position: relative;
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto auto;
+  align-self: start;
   min-width: 0;
   overflow: hidden;
   border: 2px solid var(--ink);
@@ -306,11 +307,12 @@ h1 {
 
 .tile img {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
   min-height: 0;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center center;
-  background: #f8fafc;
+  background: #111827;
 }
 
 .tile-name {
