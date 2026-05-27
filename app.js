@@ -87,6 +87,7 @@ let audioContext = null;
 let landingStageId = null;
 let landingEffectTimeout = null;
 let leaderboardPreviousOrder = [];
+let championSpotlightTimeout = null;
 
 const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
@@ -230,8 +231,9 @@ function iconSvg(icon) {
 }
 
 function createPlayers(count) {
+  const safeCount = getPlayerCount(count);
   const oldPlayers = players;
-  players = Array.from({ length: count }, (_, index) => {
+  players = Array.from({ length: safeCount }, (_, index) => {
     const existing = oldPlayers[index];
     return existing || {
       id: crypto.randomUUID(),
@@ -242,11 +244,29 @@ function createPlayers(count) {
       color: colors[index % colors.length]
     };
   });
+  playerCountInput.value = safeCount;
   currentTurn = Math.min(currentTurn, players.length - 1);
+  leaderboardPreviousOrder = [];
   renderAll();
 }
 
+function getPlayerCount(value = playerCountInput.value) {
+  return Math.min(8, Math.max(2, Number(value) || 2));
+}
+
+function syncPlayerCount() {
+  if (matchRunning) {
+    playerCountInput.value = players.length;
+    return;
+  }
+  createPlayers(playerCountInput.value);
+}
+
 function renderAll() {
+  if (!matchRunning && players.length !== getPlayerCount()) {
+    createPlayers(playerCountInput.value);
+    return;
+  }
   renderBoard();
   renderPlayers();
   renderLeaderboard();
@@ -256,9 +276,10 @@ function renderAll() {
 
 function renderBoard() {
   board.querySelectorAll(".tile").forEach((tile) => tile.remove());
+  const visiblePlayers = players.slice(0, getPlayerCount());
   stages.forEach((stage, index) => {
     const tile = document.createElement("article");
-    tile.className = `tile${index === 0 ? " start" : ""}${players.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
+    tile.className = `tile${index === 0 ? " start" : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
     const position = boardPositions[index];
     if (position) {
       tile.style.gridRow = position[0];
@@ -271,7 +292,7 @@ function renderBoard() {
 
     const tokens = document.createElement("div");
     tokens.className = "tokens";
-    players
+    visiblePlayers
       .filter((player) => player.position === index)
       .forEach((player, tokenIndex) => {
         const token = document.createElement("span");
@@ -294,7 +315,7 @@ function renderBoard() {
 
 function renderPlayers() {
   playersList.innerHTML = "";
-  players.forEach((player, index) => {
+  players.slice(0, getPlayerCount()).forEach((player, index) => {
     const card = document.createElement("article");
     card.className = "player-card";
     card.innerHTML = `
@@ -466,6 +487,7 @@ function startMatch() {
   emergencyStopButton.disabled = false;
   centerRollDiceButton.disabled = false;
   matchMinutes.disabled = true;
+  playerCountInput.disabled = true;
   timerHint.textContent = "比賽進行中，擲骰前進累積積分";
   updateTimerDisplay();
   renderAll();
@@ -489,6 +511,7 @@ function finishMatch() {
   emergencyStopButton.disabled = true;
   centerRollDiceButton.disabled = true;
   matchMinutes.disabled = false;
+  playerCountInput.disabled = false;
   timerHint.textContent = "時間到，最高分為冠軍";
   renderAll();
 }
@@ -514,6 +537,7 @@ function emergencyStopMatch() {
   emergencyStopButton.disabled = true;
   centerRollDiceButton.disabled = true;
   matchMinutes.disabled = false;
+  playerCountInput.disabled = false;
   timerHint.textContent = "比賽已緊急停止，分數與位置已歸零";
   updateTimerDisplay();
   renderAll();
@@ -560,6 +584,26 @@ function playStepSound(step) {
   gain.connect(audioContext.destination);
   oscillator.start();
   oscillator.stop(audioContext.currentTime + 0.09);
+}
+
+function playVictorySound() {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  notes.forEach((frequency, index) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const startTime = audioContext.currentTime + index * 0.14;
+    oscillator.type = index === notes.length - 1 ? "triangle" : "square";
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, startTime + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + 0.24);
+  });
 }
 
 function wait(ms) {
@@ -641,7 +685,7 @@ function escapeSvg(value) {
 
 function renderLeaderboard() {
   leaderboard.innerHTML = "";
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
   const previousOrder = leaderboardPreviousOrder;
   const risingPlayerId = previousOrder.length === sortedPlayers.length
     ? sortedPlayers.find((player, index) => {
@@ -697,6 +741,7 @@ async function rollDice() {
 
 function startMatch() {
   if (matchRunning) return;
+  syncPlayerCount();
   championPlayerId = null;
   landingStageId = null;
   window.clearTimeout(landingEffectTimeout);
@@ -752,7 +797,10 @@ function emergencyStopMatch() {
   championPlayerId = null;
   landingStageId = null;
   window.clearTimeout(landingEffectTimeout);
+  window.clearTimeout(championSpotlightTimeout);
   landingEffectTimeout = null;
+  championSpotlightTimeout = null;
+  document.querySelector(".champion-spotlight")?.remove();
   currentTurn = 0;
   window.clearInterval(matchTimer);
   matchTimer = null;
@@ -824,11 +872,36 @@ function triggerLandingEffect(stageId) {
   }, 650);
 }
 
+function showChampionSpotlight() {
+  const champion = players.find((player) => player.id === championPlayerId);
+  if (!champion) return;
+  document.querySelector(".champion-spotlight")?.remove();
+  window.clearTimeout(championSpotlightTimeout);
+
+  const spotlight = document.createElement("div");
+  spotlight.className = "champion-spotlight";
+  spotlight.innerHTML = `
+    <article class="champion-card">
+      <div class="champion-label">CHAMPION</div>
+      <div class="champion-avatar" style="background:${champion.color}">
+        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${escapeHtml(champion.name.trim().charAt(0) || "W")}</span>`}
+      </div>
+      <strong>${escapeHtml(champion.name)}</strong>
+      <span>${champion.score} pts</span>
+    </article>
+  `;
+  board.append(spotlight);
+  championSpotlightTimeout = window.setTimeout(() => {
+    spotlight.remove();
+    championSpotlightTimeout = null;
+  }, 3800);
+}
+
 */
 
 function renderLeaderboard() {
   leaderboard.innerHTML = "";
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
   const previousOrder = leaderboardPreviousOrder;
   const risingPlayerId = previousOrder.length === sortedPlayers.length
     ? sortedPlayers.find((player, index) => {
@@ -884,6 +957,7 @@ async function rollDice() {
 
 function startMatch() {
   if (matchRunning) return;
+  syncPlayerCount();
   championPlayerId = null;
   landingStageId = null;
   window.clearTimeout(landingEffectTimeout);
@@ -930,6 +1004,8 @@ function finishMatch() {
   timerHint.textContent = "Time is up. Check the final ranking.";
   updateTimerDisplay();
   renderAll();
+  playVictorySound();
+  showChampionSpotlight();
 }
 
 function emergencyStopMatch() {
@@ -1021,6 +1097,8 @@ centerRollDiceButton.addEventListener("click", rollDice);
 startMatchButton.addEventListener("click", startMatch);
 emergencyStopButton.addEventListener("click", emergencyStopMatch);
 matchMinutes.addEventListener("input", updateMatchDuration);
+playerCountInput.addEventListener("input", syncPlayerCount);
+playerCountInput.addEventListener("change", syncPlayerCount);
 fullscreenToggle.addEventListener("click", () => {
   toggleFullscreen();
 });
@@ -1030,5 +1108,5 @@ document.querySelector("#captureAvatar").addEventListener("click", captureAvatar
 centerRollDiceButton.disabled = true;
 emergencyStopButton.disabled = true;
 updateMatchDuration();
-createPlayers(4);
+syncPlayerCount();
 loadStagePhotos();
