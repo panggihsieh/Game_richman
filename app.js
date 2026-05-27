@@ -38,6 +38,7 @@ let stages = builtInImages.map((item, index) => ({
   type: item.type,
   builtIn: makeStageImage(item),
   image: makeStageImage(item),
+  boardImage: makeStageImage(item),
   customImage: ""
 }));
 
@@ -129,10 +130,11 @@ async function loadStagePhotos() {
       if (!response.ok) return;
       const data = await response.json();
       const photo = data.results?.[0]?.default_photo;
-      const photoUrl = photo?.medium_url || photo?.square_url || photo?.url;
+      const photoUrl = photo?.square_url || photo?.medium_url || photo?.url;
       if (!photoUrl || stage.customImage) return;
-      stage.builtIn = photoUrl.replace("square.", "medium.");
+      stage.builtIn = photoUrl;
       stage.image = stage.builtIn;
+      stage.boardImage = stage.builtIn;
     } catch {
       // Offline classrooms still get the local SVG icon cards.
     }
@@ -212,7 +214,7 @@ function renderBoard() {
     }
 
     const img = document.createElement("img");
-    img.src = stage.image;
+    img.src = stage.boardImage || stage.image;
     img.alt = stage.name;
 
     const tokens = document.createElement("div");
@@ -326,18 +328,21 @@ function renderStageEditor() {
       stage.name = title.value;
       if (stage.customImage) {
         stage.image = makeUploadedStageImage(stage, stage.customImage);
+        stage.boardImage = stage.image;
       }
       renderBoard();
     });
     card.querySelector("[data-built-in]").addEventListener("click", () => {
       stage.customImage = "";
       stage.image = stage.builtIn;
+      stage.boardImage = stage.builtIn;
       renderAll();
     });
     card.querySelector("[data-upload]").addEventListener("click", () => file.click());
     file.addEventListener("change", () => readImage(file.files[0], (src) => {
       stage.customImage = src;
       stage.image = makeUploadedStageImage(stage, src);
+      stage.boardImage = stage.image;
       renderAll();
     }));
 
