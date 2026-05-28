@@ -335,6 +335,88 @@ h1 {
   width: min(82%, 430px);
 }
 
+.robot-buddy {
+  position: absolute;
+  right: -72px;
+  bottom: -18px;
+  display: grid;
+  justify-items: center;
+  width: 58px;
+  height: 82px;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 18px rgba(23, 33, 43, 0.22));
+  animation: robotFloat 1.7s ease-in-out infinite;
+}
+
+.robot-antenna {
+  width: 6px;
+  height: 15px;
+  background: var(--ink);
+  box-shadow: 0 -5px 0 2px #f3bd32;
+}
+
+.robot-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  width: 52px;
+  height: 42px;
+  border: 4px solid var(--ink);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, transparent 47%, rgba(255, 255, 255, 0.26) 48% 52%, transparent 53%),
+    #8de5df;
+}
+
+.robot-eye {
+  width: 9px;
+  height: 9px;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
+  animation: robotBlink 3.2s steps(1, end) infinite;
+}
+
+.robot-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  justify-content: center;
+  width: 40px;
+  height: 28px;
+  border: 4px solid var(--ink);
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  padding: 8px 8px 0;
+  background: #fff6c7;
+}
+
+.robot-body::before,
+.robot-body::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  width: 10px;
+  height: 4px;
+  background: var(--ink);
+}
+
+.robot-body::before {
+  left: -10px;
+}
+
+.robot-body::after {
+  right: -10px;
+}
+
+.robot-body span {
+  width: 7px;
+  height: 7px;
+  background: #e46a92;
+}
+
 .timer-wheel,
 .center-dice {
   display: grid;
@@ -946,6 +1028,29 @@ h1 {
   }
 }
 
+@keyframes robotFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes robotBlink {
+  0%,
+  88%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  92% {
+    transform: scaleY(0.2);
+  }
+}
+
 @keyframes blindBoxGlow {
   from {
     opacity: 0.72;
@@ -1324,6 +1429,13 @@ canvas {
     grid-column: 2 / 4;
     grid-row: 2 / 4;
     max-width: 430px;
+  }
+
+  .robot-buddy {
+    right: -22px;
+    bottom: -58px;
+    transform: scale(0.86);
+    transform-origin: center top;
   }
 
   .board {

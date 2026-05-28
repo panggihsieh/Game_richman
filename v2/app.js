@@ -317,7 +317,7 @@ function createPlayerId(index) {
 }
 
 function getPlayerCount(value = playerCountInput.value) {
-  return Math.min(8, Math.max(2, Number(value) || 2));
+  return Math.min(8, Math.max(1, Number(value) || 1));
 }
 
 function syncPlayerCount() {

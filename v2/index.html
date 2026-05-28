@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>第二版 12道闖關測試</title>
-    <link rel="stylesheet" href="styles.css?v=20260528-v2-blind-box-pro" />
+    <link rel="stylesheet" href="styles.css?v=20260528-v2-robot-player" />
   </head>
   <body>
     <div class="app">
@@ -19,7 +19,7 @@
 
         <div class="control-block">
           <label for="playerCount">比賽人數</label>
-          <input id="playerCount" type="number" min="2" max="8" value="2" />
+          <input id="playerCount" type="number" min="1" max="8" value="1" />
         </div>
 
         <div class="control-block">
@@ -60,6 +60,17 @@
               <button id="emergencyStop" type="button">緊急停止</button>
               <button id="centerRollDice" type="button">擲骰前進</button>
             </div>
+            <div class="robot-buddy" aria-label="像素小機器人助手">
+              <div class="robot-antenna"></div>
+              <div class="robot-head">
+                <span class="robot-eye"></span>
+                <span class="robot-eye"></span>
+              </div>
+              <div class="robot-body">
+                <span></span>
+                <span></span>
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -82,6 +93,6 @@
       </div>
     </dialog>
 
-    <script src="app.js?v=20260528-v2-blind-box-pro"></script>
+    <script src="app.js?v=20260528-v2-robot-player"></script>
   </body>
 </html>
