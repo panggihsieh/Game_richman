@@ -349,8 +349,8 @@ function renderBoard() {
     tile.className = `tile${index === 0 ? " start" : ""}${hasSurpriseBox ? " special blind-box" : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
     const position = boardPositions[index];
     if (position) {
-      tile.style.gridRow = position[0];
-      tile.style.gridColumn = position[1];
+      tile.style.gridRow = `${position[0]} / span 1`;
+      tile.style.gridColumn = `${position[1]} / span 1`;
     }
 
     const img = document.createElement("img");
