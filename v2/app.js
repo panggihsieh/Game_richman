@@ -30,14 +30,6 @@ const boardPositions = [
   [3, 1], [2, 1]
 ];
 
-const specialTiles = {
-  2: { kind: "bonus", label: "加分", icon: "+2" },
-  4: { kind: "lucky", label: "幸運", icon: "LU" },
-  6: { kind: "mystery", label: "神秘", icon: "?" },
-  8: { kind: "swap", label: "交換", icon: "SW" },
-  10: { kind: "trap", label: "陷阱", icon: "-2" }
-};
-
 const surpriseEvents = [
   {
     title: "加倍得分",
@@ -156,6 +148,7 @@ let leaderboardPreviousOrder = [];
 let championSpotlightTimeout = null;
 let eventCardTimeout = null;
 let eventCardResolve = null;
+let surpriseBoxStageIds = new Set();
 
 const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
@@ -351,9 +344,9 @@ function renderBoard() {
   board.querySelectorAll(".tile").forEach((tile) => tile.remove());
   const visiblePlayers = players.slice(0, getPlayerCount());
   stages.forEach((stage, index) => {
-    const specialTile = specialTiles[index];
+    const hasSurpriseBox = surpriseBoxStageIds.has(index);
     const tile = document.createElement("article");
-    tile.className = `tile${index === 0 ? " start" : ""}${specialTile ? ` special ${specialTile.kind}` : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
+    tile.className = `tile${index === 0 ? " start" : ""}${hasSurpriseBox ? " special blind-box" : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
     const position = boardPositions[index];
     if (position) {
       tile.style.gridRow = position[0];
@@ -376,19 +369,28 @@ function renderBoard() {
         tokens.append(token);
       });
 
+    const box = document.createElement("div");
+    if (hasSurpriseBox) {
+      box.className = "blind-box-gift";
+      box.setAttribute("aria-label", "驚喜盲盒");
+      box.innerHTML = "<i></i>";
+    }
+
     const name = document.createElement("div");
     name.className = "tile-name";
     const title = document.createElement("span");
     title.textContent = `${index + 1}. ${stage.name}`;
     name.append(title);
-    if (specialTile) {
+    if (hasSurpriseBox) {
       const badge = document.createElement("strong");
-      badge.className = "tile-badge";
-      badge.textContent = specialTile.label;
+      badge.className = "tile-badge blind";
+      badge.textContent = "盲盒";
       name.append(badge);
     }
 
-    tile.append(img, tokens, name);
+    tile.append(img, tokens);
+    if (hasSurpriseBox) tile.append(box);
+    tile.append(name);
     board.append(tile);
   });
 }
@@ -560,6 +562,7 @@ function startMatch() {
     player.position = 0;
   });
   shuffleStages();
+  surpriseBoxStageIds = chooseSurpriseBoxes();
   document.body.classList.add("fullscreen-mode");
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
@@ -608,6 +611,7 @@ function emergencyStopMatch() {
   diceFace.textContent = "1";
   centerDiceFace.textContent = "1";
   stages = originalStages.map((stage) => ({ ...stage }));
+  surpriseBoxStageIds = new Set();
   players.forEach((player) => {
     player.score = 0;
     player.position = 0;
@@ -649,6 +653,17 @@ function shuffleStages() {
 
 function updateOriginalStage(stage) {
   originalStages = originalStages.map((item) => (item.id === stage.id ? { ...stage } : item));
+}
+
+function chooseSurpriseBoxes() {
+  const candidates = stages
+    .map((_, index) => index)
+    .filter((index) => index !== 0);
+  return new Set(candidates
+    .map((stageId) => ({ stageId, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .slice(0, 4)
+    .map((item) => item.stageId));
 }
 
 function playStepSound(step) {
@@ -838,8 +853,7 @@ async function rollDice() {
   triggerLandingEffect(player.position);
   await wait(420);
   player.score += roll;
-  await applyTileSurprise(player, roll);
-  await maybeTriggerRandomEvent(player, roll);
+  await applySurpriseBox(player, roll);
   renderBoard();
   activeMovingPlayerId = null;
   currentTurn = (currentTurn + 1) % players.length;
@@ -867,6 +881,7 @@ function startMatch() {
     player.position = 0;
   });
   shuffleStages();
+  surpriseBoxStageIds = chooseSurpriseBoxes();
   document.body.classList.add("fullscreen-mode");
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
@@ -926,6 +941,7 @@ function emergencyStopMatch() {
   diceFace.textContent = "1";
   centerDiceFace.textContent = "1";
   stages = originalStages.map((stage) => ({ ...stage }));
+  surpriseBoxStageIds = new Set();
   players.forEach((player) => {
     player.score = 0;
     player.position = 0;
@@ -991,50 +1007,8 @@ function triggerLandingEffect(stageId) {
   }, 650);
 }
 
-async function applyTileSurprise(player, roll) {
-  const specialTile = specialTiles[player.position];
-  if (!specialTile) return;
-
-  const actions = {
-    bonus: () => {
-      player.score += 2;
-      return "額外獲得 2 分";
-    },
-    lucky: () => {
-      player.score += roll;
-      return `幸運加成，再獲得 ${roll} 分`;
-    },
-    mystery: () => {
-      player.score += 1;
-      return "神秘獎勵，獲得 1 分";
-    },
-    swap: () => {
-      const target = players
-        .filter((item) => item.id !== player.id)
-        .sort(() => Math.random() - 0.5)[0];
-      if (!target) return "目前沒有可交換的玩家";
-      [player.position, target.position] = [target.position, player.position];
-      return `和 ${target.name} 交換位置`;
-    },
-    trap: () => {
-      player.score = Math.max(0, player.score - 2);
-      return "陷阱扣除 2 分";
-    }
-  };
-
-  const result = actions[specialTile.kind]?.() || "觸發特殊格";
-  renderAll();
-  playEffectSound(specialTile.kind);
-  await showEventCard({
-    title: `${specialTile.label}格`,
-    detail: result,
-    tone: specialTile.kind,
-    kicker: player.name
-  });
-}
-
-async function maybeTriggerRandomEvent(player, roll) {
-  if (Math.random() > 0.42) return;
+async function applySurpriseBox(player, roll) {
+  if (!surpriseBoxStageIds.has(player.position)) return false;
   const event = surpriseEvents[Math.floor(Math.random() * surpriseEvents.length)];
   const result = event.apply({ player, roll });
   renderAll();
@@ -1043,8 +1017,9 @@ async function maybeTriggerRandomEvent(player, roll) {
     title: event.title,
     detail: result || event.detail,
     tone: event.tone,
-    kicker: "隨機事件"
+    kicker: "驚喜盲盒"
   });
+  return true;
 }
 
 function getRankingMap() {
