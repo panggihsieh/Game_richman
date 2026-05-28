@@ -719,6 +719,30 @@ function playStepSound(step) {
   oscillator.stop(audioContext.currentTime + 0.09);
 }
 
+function playRobotStepSound(step) {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  const startTime = audioContext.currentTime;
+  const baseFrequency = step % 2 ? 260 : 320;
+  [
+    { type: "square", frequency: baseFrequency, gain: 0.105 },
+    { type: "sawtooth", frequency: baseFrequency * 1.74, gain: 0.038 }
+  ].forEach((voice) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = voice.type;
+    oscillator.frequency.setValueAtTime(voice.frequency, startTime);
+    oscillator.frequency.exponentialRampToValueAtTime(voice.frequency * 0.72, startTime + 0.075);
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(voice.gain, startTime + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.11);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + 0.12);
+  });
+}
+
 function playVictorySound() {
   if (!window.AudioContext && !window.webkitAudioContext) return;
   audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
@@ -1060,7 +1084,7 @@ async function moveRobotAfterPlayer() {
   for (let step = 0; step < roll; step += 1) {
     if (!matchRunning) break;
     robotPlayer.position = (robotPlayer.position + 1) % stages.length;
-    playStepSound(step + 1);
+    playRobotStepSound(step + 1);
     renderBoard();
     await wait(220);
   }
