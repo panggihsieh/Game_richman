@@ -1075,7 +1075,7 @@ function triggerLandingEffect(stageId) {
 
 async function moveRobotAfterPlayer() {
   if (!matchRunning) return;
-  await wait(2000);
+  await wait(1000);
   if (!matchRunning) return;
   const roll = rollDie();
   turnText.textContent = "小機器人自動移動中";
