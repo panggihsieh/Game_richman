@@ -573,26 +573,6 @@ h1 {
   z-index: 1;
 }
 
-.tile.special.bonus {
-  border-color: var(--yellow);
-}
-
-.tile.special.lucky {
-  border-color: var(--green);
-}
-
-.tile.special.mystery {
-  border-color: var(--blue);
-}
-
-.tile.special.swap {
-  border-color: var(--teal);
-}
-
-.tile.special.trap {
-  border-color: var(--red);
-}
-
 .tile.blind-box {
   border-color: #e46a92;
   background: #fff7fb;

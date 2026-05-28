@@ -399,7 +399,7 @@ function renderBoard() {
     if (hasSurpriseBox) {
       const badge = document.createElement("strong");
       badge.className = "tile-badge blind";
-      badge.textContent = "盲盒";
+      badge.textContent = "特殊盲盒";
       name.append(badge);
     }
 
