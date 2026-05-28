@@ -551,6 +551,7 @@ h1 {
   object-fit: cover;
   object-position: center center;
   background: #111827;
+  transition: transform 0.2s ease;
 }
 
 .tile-name {

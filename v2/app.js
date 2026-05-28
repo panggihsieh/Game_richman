@@ -111,6 +111,11 @@ const localStageImages = [
   "assets/stages/20-suckermouth-catfish.jpg"
 ];
 
+const stageImageFocus = {
+  0: { position: "58% 28%", scale: 1.32, origin: "58% 28%" },
+  1: { position: "34% 34%", scale: 1.28, origin: "34% 34%" }
+};
+
 function createStage(item, index) {
   const builtIn = localStageImages[index] || makeStageImage(item);
   return {
@@ -123,6 +128,7 @@ function createStage(item, index) {
     builtIn,
     image: builtIn,
     boardImage: builtIn,
+    imageFocus: stageImageFocus[index] || null,
     customImage: ""
   };
 }
@@ -371,6 +377,11 @@ function renderBoard() {
     const img = document.createElement("img");
     img.src = stage.boardImage || stage.image;
     img.alt = stage.name;
+    if (stage.imageFocus) {
+      img.style.objectPosition = stage.imageFocus.position;
+      img.style.transform = `scale(${stage.imageFocus.scale})`;
+      img.style.transformOrigin = stage.imageFocus.origin;
+    }
 
     const tokens = document.createElement("div");
     tokens.className = "tokens";
