@@ -1033,6 +1033,8 @@ function triggerLandingEffect(stageId) {
 
 async function moveRobotAfterPlayer() {
   if (!matchRunning) return;
+  await wait(2000);
+  if (!matchRunning) return;
   const roll = Math.floor(Math.random() * 6) + 1;
   turnText.textContent = "小機器人自動移動中";
   await animateDiceRoll(roll);
