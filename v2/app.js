@@ -384,13 +384,6 @@ function renderBoard() {
         tokens.append(token);
       });
 
-    const box = document.createElement("div");
-    if (hasSurpriseBox) {
-      box.className = "blind-box-gift";
-      box.setAttribute("aria-label", "驚喜盲盒");
-      box.innerHTML = "<i></i>";
-    }
-
     const name = document.createElement("div");
     name.className = "tile-name";
     const title = document.createElement("span");
@@ -404,7 +397,6 @@ function renderBoard() {
     }
 
     tile.append(img, tokens);
-    if (hasSurpriseBox) tile.append(box);
     tile.append(name);
     board.append(tile);
   });
@@ -1165,8 +1157,8 @@ function showChampionSpotlight() {
 }
 
 titleInput.addEventListener("input", () => {
-  displayTitle.textContent = titleInput.value || "線上大富翁";
-  document.title = titleInput.value || "線上大富翁";
+  displayTitle.textContent = titleInput.value || "生態大富翁v2";
+  document.title = titleInput.value || "生態大富翁v2";
 });
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);

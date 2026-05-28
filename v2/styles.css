@@ -335,88 +335,6 @@ h1 {
   width: min(82%, 430px);
 }
 
-.robot-buddy {
-  position: absolute;
-  right: -72px;
-  bottom: -18px;
-  display: grid;
-  justify-items: center;
-  width: 58px;
-  height: 82px;
-  pointer-events: none;
-  filter: drop-shadow(0 12px 18px rgba(23, 33, 43, 0.22));
-  animation: robotFloat 1.7s ease-in-out infinite;
-}
-
-.robot-antenna {
-  width: 6px;
-  height: 15px;
-  background: var(--ink);
-  box-shadow: 0 -5px 0 2px #f3bd32;
-}
-
-.robot-head {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: center;
-  justify-items: center;
-  width: 52px;
-  height: 42px;
-  border: 4px solid var(--ink);
-  border-radius: 4px;
-  background:
-    linear-gradient(90deg, transparent 47%, rgba(255, 255, 255, 0.26) 48% 52%, transparent 53%),
-    #8de5df;
-}
-
-.robot-eye {
-  width: 9px;
-  height: 9px;
-  background: var(--ink);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
-  animation: robotBlink 3.2s steps(1, end) infinite;
-}
-
-.robot-body {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-  justify-content: center;
-  width: 40px;
-  height: 28px;
-  border: 4px solid var(--ink);
-  border-top: 0;
-  border-radius: 0 0 4px 4px;
-  padding: 8px 8px 0;
-  background: #fff6c7;
-}
-
-.robot-body::before,
-.robot-body::after {
-  content: "";
-  position: absolute;
-  top: 7px;
-  width: 10px;
-  height: 4px;
-  background: var(--ink);
-}
-
-.robot-body::before {
-  left: -10px;
-}
-
-.robot-body::after {
-  right: -10px;
-}
-
-.robot-body span {
-  width: 7px;
-  height: 7px;
-  background: #e46a92;
-}
-
 .timer-wheel,
 .center-dice {
   display: grid;
@@ -651,8 +569,10 @@ h1 {
 }
 
 .tile-badge {
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   min-width: 34px;
   border-radius: 999px;
   padding: 3px 7px;
@@ -669,81 +589,31 @@ h1 {
   box-shadow: 0 4px 12px rgba(122, 36, 80, 0.18);
 }
 
-.blind-box-gift {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: 50%;
-  width: min(44%, 72px);
-  aspect-ratio: 1.08;
-  border: 3px solid #fff;
-  border-radius: 12px;
-  background:
-    linear-gradient(90deg, transparent 42%, #fff6c7 43% 57%, transparent 58%),
-    linear-gradient(135deg, #ff9fcc, #e46a92);
-  box-shadow:
-    0 0 0 7px rgba(255, 255, 255, 0.28),
-    0 16px 30px rgba(122, 36, 80, 0.34);
-  transform: translate(-50%, -44%);
-  animation: blindBoxBounce 1.05s ease-in-out infinite;
-}
-
-.blind-box-gift i {
-  position: absolute;
-  inset: 0;
-  display: block;
-}
-
-.blind-box-gift::before,
-.blind-box-gift::after,
-.blind-box-gift i::before,
-.blind-box-gift i::after {
+.tile-badge.blind::before {
   content: "";
-  position: absolute;
-  pointer-events: none;
-}
-
-.blind-box-gift::before {
-  left: -3px;
-  right: -3px;
-  top: 34%;
-  height: 10px;
+  width: 4px;
+  height: 4px;
+  flex: 0 0 auto;
   background: #fff6c7;
-  box-shadow: 0 2px 0 rgba(122, 36, 80, 0.08);
-}
-
-.blind-box-gift::after {
-  left: 50%;
-  top: -23%;
-  width: 72%;
-  height: 30%;
-  border: 3px solid #fff6c7;
-  border-bottom: 0;
-  border-radius: 999px 999px 0 0;
-  transform: translateX(-50%);
-  background: rgba(255, 246, 199, 0.2);
-  animation: blindBoxLid 1.05s ease-in-out infinite;
-}
-
-.blind-box-gift i::before,
-.blind-box-gift i::after {
-  top: -31%;
-  width: 32%;
-  height: 28%;
-  border: 5px solid #fff6c7;
-  border-radius: 50% 50% 42% 42%;
-  background: transparent;
-  animation: blindBoxBow 1.05s ease-in-out infinite;
-}
-
-.blind-box-gift i::before {
-  left: 17%;
-  transform: rotate(24deg);
-}
-
-.blind-box-gift i::after {
-  right: 17%;
-  transform: rotate(-24deg);
+  image-rendering: pixelated;
+  box-shadow:
+    0 -8px 0 #fff6c7,
+    -4px -4px 0 #fff6c7,
+    4px -4px 0 #fff6c7,
+    -8px 0 0 #7a2450,
+    -4px 0 0 #e46a92,
+    0 0 0 #fff6c7,
+    4px 0 0 #e46a92,
+    8px 0 0 #7a2450,
+    -8px 4px 0 #7a2450,
+    -4px 4px 0 #e46a92,
+    0 4px 0 #fff6c7,
+    4px 4px 0 #e46a92,
+    8px 4px 0 #7a2450,
+    -4px 8px 0 #7a2450,
+    0 8px 0 #7a2450,
+    4px 8px 0 #7a2450;
+  animation: pixelBlindBoxGif 0.72s steps(2, end) infinite;
 }
 
 .tokens {
@@ -1038,29 +908,6 @@ h1 {
   }
 }
 
-@keyframes robotFloat {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes robotBlink {
-  0%,
-  88%,
-  100% {
-    transform: scaleY(1);
-  }
-
-  92% {
-    transform: scaleY(0.2);
-  }
-}
-
 @keyframes blindBoxGlow {
   from {
     opacity: 0.72;
@@ -1085,40 +932,14 @@ h1 {
   }
 }
 
-@keyframes blindBoxBounce {
+@keyframes pixelBlindBoxGif {
   0%,
   100% {
-    transform: translate(-50%, -44%) rotate(-2deg) scale(1);
+    transform: translateY(0);
   }
 
-  42% {
-    transform: translate(-50%, -58%) rotate(3deg) scale(1.08);
-  }
-
-  68% {
-    transform: translate(-50%, -40%) rotate(-1deg) scale(0.98);
-  }
-}
-
-@keyframes blindBoxLid {
-  0%,
-  100% {
-    transform: translateX(-50%) translateY(0) rotate(0);
-  }
-
-  42% {
-    transform: translateX(-50%) translateY(-7px) rotate(-5deg);
-  }
-}
-
-@keyframes blindBoxBow {
-  0%,
-  100% {
-    filter: brightness(1);
-  }
-
-  42% {
-    filter: brightness(1.16);
+  50% {
+    transform: translateY(-2px);
   }
 }
 
@@ -1439,13 +1260,6 @@ canvas {
     grid-column: 2 / 4;
     grid-row: 2 / 4;
     max-width: 430px;
-  }
-
-  .robot-buddy {
-    right: -22px;
-    bottom: -58px;
-    transform: scale(0.86);
-    transform-origin: center top;
   }
 
   .board {
