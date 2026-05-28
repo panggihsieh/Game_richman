@@ -571,7 +571,7 @@ function startMatch() {
   robotPlayer.score = 0;
   robotPlayer.position = 0;
   shuffleStages();
-  surpriseBoxStageIds = chooseSurpriseBoxes();
+  surpriseBoxStageIds = new Set();
   document.body.classList.add("fullscreen-mode");
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
@@ -892,7 +892,7 @@ function startMatch() {
     player.position = 0;
   });
   shuffleStages();
-  surpriseBoxStageIds = chooseSurpriseBoxes();
+  surpriseBoxStageIds = new Set();
   document.body.classList.add("fullscreen-mode");
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
