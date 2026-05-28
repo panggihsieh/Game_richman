@@ -24,10 +24,76 @@ const builtInImages = [
 ];
 
 const boardPositions = [
-  [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8],
-  [2, 8], [3, 8],
-  [4, 8], [4, 7], [4, 6], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1],
+  [1, 1], [1, 2], [1, 3], [1, 4],
+  [2, 4], [3, 4],
+  [4, 4], [4, 3], [4, 2], [4, 1],
   [3, 1], [2, 1]
+];
+
+const specialTiles = {
+  2: { kind: "bonus", label: "加分", icon: "+2" },
+  4: { kind: "lucky", label: "幸運", icon: "LU" },
+  6: { kind: "mystery", label: "神秘", icon: "?" },
+  8: { kind: "swap", label: "交換", icon: "SW" },
+  10: { kind: "trap", label: "陷阱", icon: "-2" }
+};
+
+const surpriseEvents = [
+  {
+    title: "加倍得分",
+    detail: "本回合骰子分數再加一次。",
+    tone: "bonus",
+    apply: ({ player, roll }) => {
+      player.score += roll;
+      return `${player.name} 追加 ${roll} 分`;
+    }
+  },
+  {
+    title: "退後 2 格",
+    detail: "小小踩空，位置退後 2 格。",
+    tone: "trap",
+    apply: ({ player }) => {
+      player.position = (player.position - 2 + stages.length) % stages.length;
+      return `${player.name} 退到第 ${player.position + 1} 格`;
+    }
+  },
+  {
+    title: "偷取 1 分",
+    detail: "從目前最高分玩家拿走 1 分。",
+    tone: "mystery",
+    apply: ({ player }) => {
+      const target = players
+        .filter((item) => item.id !== player.id && item.score > 0)
+        .sort((a, b) => b.score - a.score)[0];
+      if (!target) return "沒有可偷取的分數";
+      target.score -= 1;
+      player.score += 1;
+      return `${player.name} 從 ${target.name} 取得 1 分`;
+    }
+  },
+  {
+    title: "交換位置",
+    detail: "與隨機一位玩家交換所在格。",
+    tone: "swap",
+    apply: ({ player }) => {
+      const candidates = players.filter((item) => item.id !== player.id);
+      const target = candidates[Math.floor(Math.random() * candidates.length)];
+      if (!target) return "目前沒有可交換的玩家";
+      [player.position, target.position] = [target.position, player.position];
+      return `${player.name} 和 ${target.name} 交換位置`;
+    }
+  },
+  {
+    title: "全員洗牌",
+    detail: "所有玩家位置重新抽一格。",
+    tone: "mystery",
+    apply: () => {
+      players.forEach((item) => {
+        item.position = Math.floor(Math.random() * stages.length);
+      });
+      return "全員位置重新洗牌";
+    }
+  }
 ];
 
 const localStageImages = [
@@ -69,14 +135,14 @@ function createStage(item, index) {
   };
 }
 
-let stages = builtInImages.map(createStage);
+let stages = builtInImages.slice(0, boardPositions.length).map(createStage);
 let originalStages = stages.map((stage) => ({ ...stage }));
 
 let players = [];
 let currentTurn = 0;
 let cameraPlayerId = null;
 let cameraStream = null;
-let matchSeconds = 3 * 60;
+let matchSeconds = 60;
 let remainingSeconds = matchSeconds;
 let matchTimer = null;
 let matchRunning = false;
@@ -88,6 +154,8 @@ let landingStageId = null;
 let landingEffectTimeout = null;
 let leaderboardPreviousOrder = [];
 let championSpotlightTimeout = null;
+let eventCardTimeout = null;
+let eventCardResolve = null;
 
 const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
@@ -236,7 +304,7 @@ function createPlayers(count) {
   players = Array.from({ length: safeCount }, (_, index) => {
     const existing = oldPlayers[index];
     return existing || {
-      id: crypto.randomUUID(),
+      id: createPlayerId(index),
       name: `玩家 ${index + 1}`,
       score: 0,
       position: 0,
@@ -248,6 +316,11 @@ function createPlayers(count) {
   currentTurn = Math.min(currentTurn, players.length - 1);
   leaderboardPreviousOrder = [];
   renderAll();
+}
+
+function createPlayerId(index) {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `player-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`;
 }
 
 function getPlayerCount(value = playerCountInput.value) {
@@ -278,8 +351,9 @@ function renderBoard() {
   board.querySelectorAll(".tile").forEach((tile) => tile.remove());
   const visiblePlayers = players.slice(0, getPlayerCount());
   stages.forEach((stage, index) => {
+    const specialTile = specialTiles[index];
     const tile = document.createElement("article");
-    tile.className = `tile${index === 0 ? " start" : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
+    tile.className = `tile${index === 0 ? " start" : ""}${specialTile ? ` special ${specialTile.kind}` : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
     const position = boardPositions[index];
     if (position) {
       tile.style.gridRow = position[0];
@@ -307,6 +381,12 @@ function renderBoard() {
     const title = document.createElement("span");
     title.textContent = `${index + 1}. ${stage.name}`;
     name.append(title);
+    if (specialTile) {
+      const badge = document.createElement("strong");
+      badge.className = "tile-badge";
+      badge.textContent = specialTile.label;
+      name.append(badge);
+    }
 
     tile.append(img, tokens, name);
     board.append(tile);
@@ -606,6 +686,32 @@ function playVictorySound() {
   });
 }
 
+function playEffectSound(tone = "bonus") {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  const toneMap = {
+    bonus: [523.25, 783.99],
+    lucky: [440, 659.25],
+    mystery: [349.23, 587.33],
+    swap: [392, 293.66],
+    trap: [220, 164.81]
+  };
+  (toneMap[tone] || toneMap.mystery).forEach((frequency, index) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const startTime = audioContext.currentTime + index * 0.1;
+    oscillator.type = tone === "trap" ? "sawtooth" : "triangle";
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.13, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.18);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + 0.2);
+  });
+}
+
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -681,8 +787,6 @@ function escapeSvg(value) {
     .replaceAll(">", "&gt;");
 }
 
-/*
-
 function renderLeaderboard() {
   leaderboard.innerHTML = "";
   const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
@@ -701,7 +805,7 @@ function renderLeaderboard() {
     if (player.id === championPlayerId) {
       const badge = document.createElement("span");
       badge.className = "champion-gif";
-      badge.textContent = "??";
+      badge.textContent = "冠軍";
       pill.append(badge);
     }
     leaderboard.append(pill);
@@ -715,6 +819,7 @@ async function rollDice() {
   rolling = true;
   const roll = Math.floor(Math.random() * 6) + 1;
   const player = players[currentTurn];
+  const previousRanks = getRankingMap();
   await animateDiceRoll(roll);
   activeMovingPlayerId = player.id;
   for (let step = 0; step < roll; step += 1) {
@@ -733,235 +838,27 @@ async function rollDice() {
   triggerLandingEffect(player.position);
   await wait(420);
   player.score += roll;
+  await applyTileSurprise(player, roll);
+  await maybeTriggerRandomEvent(player, roll);
+  renderBoard();
   activeMovingPlayerId = null;
   currentTurn = (currentTurn + 1) % players.length;
   rolling = false;
   renderAll();
+  announceRankChange(player, previousRanks);
 }
 
 function startMatch() {
   if (matchRunning) return;
   syncPlayerCount();
-  championPlayerId = null;
-  landingStageId = null;
-  window.clearTimeout(landingEffectTimeout);
-  landingEffectTimeout = null;
-  matchRunning = true;
-  remainingSeconds = matchSeconds;
-  currentTurn = 0;
-  players.forEach((player) => {
-    player.score = 0;
-    player.position = 0;
-  });
-  shuffleStages();
-  document.body.classList.add("fullscreen-mode");
-  fullscreenToggle.textContent = "?ａ??刻撟?;
-  startMatchButton.textContent = "瘥魚?脰?銝?;
-  startMatchButton.disabled = true;
-  emergencyStopButton.disabled = false;
-  centerRollDiceButton.disabled = false;
-  matchMinutes.disabled = true;
-  timerHint.textContent = "瘥魚?脰?銝哨??脤狐?脩敞蝛???;
-  updateTimerDisplay();
-  renderAll();
-  matchTimer = window.setInterval(() => {
-    remainingSeconds -= 1;
-    updateTimerDisplay();
-    if (remainingSeconds <= 0) {
-      finishMatch();
-    }
-  }, 1000);
-}
-
-function finishMatch() {
-  matchRunning = false;
-  rolling = false;
-  activeMovingPlayerId = null;
-  window.clearInterval(matchTimer);
-  matchTimer = null;
-  championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
-  startMatchButton.textContent = "???瘥魚";
-  startMatchButton.disabled = false;
-  emergencyStopButton.disabled = true;
-  centerRollDiceButton.disabled = true;
-  matchMinutes.disabled = false;
-  timerHint.textContent = "???堆??擃??箏?頠?;
-  updateTimerDisplay();
-  renderAll();
-}
-
-function emergencyStopMatch() {
-  matchRunning = false;
-  rolling = false;
-  activeMovingPlayerId = null;
   championPlayerId = null;
   landingStageId = null;
   window.clearTimeout(landingEffectTimeout);
   window.clearTimeout(championSpotlightTimeout);
   landingEffectTimeout = null;
   championSpotlightTimeout = null;
+  clearEventCard();
   document.querySelector(".champion-spotlight")?.remove();
-  currentTurn = 0;
-  window.clearInterval(matchTimer);
-  matchTimer = null;
-  remainingSeconds = matchSeconds;
-  diceFace.textContent = "1";
-  centerDiceFace.textContent = "1";
-  stages = originalStages.map((stage) => ({ ...stage }));
-  players.forEach((player) => {
-    player.score = 0;
-    player.position = 0;
-  });
-  startMatchButton.textContent = "甇????瘥魚";
-  startMatchButton.disabled = false;
-  emergencyStopButton.disabled = true;
-  centerRollDiceButton.disabled = true;
-  matchMinutes.disabled = false;
-  timerHint.textContent = "瘥魚撌脩??亙?甇ｇ????蝵桀歇甇賊";
-  updateTimerDisplay();
-  renderAll();
-}
-
-function updateTimerDisplay() {
-  const minutes = Math.floor(Math.max(0, remainingSeconds) / 60);
-  const seconds = Math.max(0, remainingSeconds) % 60;
-  timerText.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  const progress = matchSeconds ? (remainingSeconds / matchSeconds) * 360 : 0;
-  timerWheel.style.setProperty("--timer-angle", `${progress}deg`);
-  const inDanger = matchRunning && remainingSeconds <= 10;
-  const inCritical = matchRunning && remainingSeconds <= 3;
-  timerWheel.classList.toggle("danger", inDanger);
-  timerWheel.classList.toggle("critical", inCritical);
-  document.body.classList.toggle("danger-mode", inDanger);
-  document.body.classList.toggle("critical-mode", inCritical);
-}
-
-async function animateDiceRoll(finalValue) {
-  diceFace.classList.add("rolling");
-  centerDiceFace.classList.add("rolling");
-  for (let tick = 0; tick < 10; tick += 1) {
-    const face = Math.floor(Math.random() * 6) + 1;
-    diceFace.textContent = face;
-    centerDiceFace.textContent = face;
-    await wait(70);
-  }
-  diceFace.textContent = finalValue;
-  centerDiceFace.textContent = finalValue;
-  diceFace.classList.remove("rolling");
-  centerDiceFace.classList.remove("rolling");
-  diceFace.classList.remove("result-pop");
-  centerDiceFace.classList.remove("result-pop");
-  void diceFace.offsetWidth;
-  void centerDiceFace.offsetWidth;
-  diceFace.classList.add("result-pop");
-  centerDiceFace.classList.add("result-pop");
-  window.setTimeout(() => {
-    diceFace.classList.remove("result-pop");
-    centerDiceFace.classList.remove("result-pop");
-  }, 420);
-}
-
-function triggerLandingEffect(stageId) {
-  landingStageId = stageId;
-  window.clearTimeout(landingEffectTimeout);
-  renderBoard();
-  landingEffectTimeout = window.setTimeout(() => {
-    landingStageId = null;
-    landingEffectTimeout = null;
-    renderBoard();
-  }, 650);
-}
-
-function showChampionSpotlight() {
-  const champion = players.find((player) => player.id === championPlayerId);
-  if (!champion) return;
-  document.querySelector(".champion-spotlight")?.remove();
-  window.clearTimeout(championSpotlightTimeout);
-
-  const spotlight = document.createElement("div");
-  spotlight.className = "champion-spotlight";
-  spotlight.innerHTML = `
-    <article class="champion-card">
-      <div class="champion-label">CHAMPION</div>
-      <div class="champion-avatar" style="background:${champion.color}">
-        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${escapeHtml(champion.name.trim().charAt(0) || "W")}</span>`}
-      </div>
-      <strong>${escapeHtml(champion.name)}</strong>
-      <span>${champion.score} pts</span>
-    </article>
-  `;
-  board.append(spotlight);
-  championSpotlightTimeout = window.setTimeout(() => {
-    spotlight.remove();
-    championSpotlightTimeout = null;
-  }, 3800);
-}
-
-*/
-
-function renderLeaderboard() {
-  leaderboard.innerHTML = "";
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
-  const previousOrder = leaderboardPreviousOrder;
-  const risingPlayerId = previousOrder.length === sortedPlayers.length
-    ? sortedPlayers.find((player, index) => {
-      const previousIndex = previousOrder.indexOf(player.id);
-      return previousIndex !== -1 && previousIndex > index;
-    })?.id
-    : null;
-
-  sortedPlayers.forEach((player) => {
-    const pill = document.createElement("div");
-    pill.className = `leader-pill${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
-    pill.innerHTML = `<span class="token" style="background:${player.color}">${escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} pts</span>`;
-    if (player.id === championPlayerId) {
-      const badge = document.createElement("span");
-      badge.className = "champion-gif";
-      badge.textContent = "WIN";
-      pill.append(badge);
-    }
-    leaderboard.append(pill);
-  });
-
-  leaderboardPreviousOrder = sortedPlayers.map((player) => player.id);
-}
-
-async function rollDice() {
-  if (!players.length || rolling || !matchRunning) return;
-  rolling = true;
-  const roll = Math.floor(Math.random() * 6) + 1;
-  const player = players[currentTurn];
-  await animateDiceRoll(roll);
-  activeMovingPlayerId = player.id;
-  for (let step = 0; step < roll; step += 1) {
-    if (!matchRunning) break;
-    player.position = (player.position + 1) % stages.length;
-    playStepSound(step);
-    renderBoard();
-    await wait(260);
-  }
-  if (!matchRunning) {
-    activeMovingPlayerId = null;
-    rolling = false;
-    renderAll();
-    return;
-  }
-  triggerLandingEffect(player.position);
-  await wait(420);
-  player.score += roll;
-  activeMovingPlayerId = null;
-  currentTurn = (currentTurn + 1) % players.length;
-  rolling = false;
-  renderAll();
-}
-
-function startMatch() {
-  if (matchRunning) return;
-  syncPlayerCount();
-  championPlayerId = null;
-  landingStageId = null;
-  window.clearTimeout(landingEffectTimeout);
-  landingEffectTimeout = null;
   matchRunning = true;
   remainingSeconds = matchSeconds;
   currentTurn = 0;
@@ -971,13 +868,14 @@ function startMatch() {
   });
   shuffleStages();
   document.body.classList.add("fullscreen-mode");
-  fullscreenToggle.textContent = "Exit fullscreen";
-  startMatchButton.textContent = "Match running";
+  fullscreenToggle.textContent = "離開全螢幕";
+  startMatchButton.textContent = "比賽進行中";
   startMatchButton.disabled = true;
   emergencyStopButton.disabled = false;
   centerRollDiceButton.disabled = false;
   matchMinutes.disabled = true;
-  timerHint.textContent = "Match live. Roll the dice before time runs out.";
+  playerCountInput.disabled = true;
+  timerHint.textContent = "比賽進行中，擲骰前進累積積分";
   updateTimerDisplay();
   renderAll();
   matchTimer = window.setInterval(() => {
@@ -996,12 +894,13 @@ function finishMatch() {
   window.clearInterval(matchTimer);
   matchTimer = null;
   championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
-  startMatchButton.textContent = "Start next match";
+  startMatchButton.textContent = "重新開始比賽";
   startMatchButton.disabled = false;
   emergencyStopButton.disabled = true;
   centerRollDiceButton.disabled = true;
   matchMinutes.disabled = false;
-  timerHint.textContent = "Time is up. Check the final ranking.";
+  playerCountInput.disabled = false;
+  timerHint.textContent = "時間到，最高分為冠軍";
   updateTimerDisplay();
   renderAll();
   playVictorySound();
@@ -1015,7 +914,11 @@ function emergencyStopMatch() {
   championPlayerId = null;
   landingStageId = null;
   window.clearTimeout(landingEffectTimeout);
+  window.clearTimeout(championSpotlightTimeout);
   landingEffectTimeout = null;
+  championSpotlightTimeout = null;
+  clearEventCard();
+  document.querySelector(".champion-spotlight")?.remove();
   currentTurn = 0;
   window.clearInterval(matchTimer);
   matchTimer = null;
@@ -1027,12 +930,13 @@ function emergencyStopMatch() {
     player.score = 0;
     player.position = 0;
   });
-  startMatchButton.textContent = "Start match";
+  startMatchButton.textContent = "正式開始比賽";
   startMatchButton.disabled = false;
   emergencyStopButton.disabled = true;
   centerRollDiceButton.disabled = true;
   matchMinutes.disabled = false;
-  timerHint.textContent = "Match stopped. Scores reset and board restored.";
+  playerCountInput.disabled = false;
+  timerHint.textContent = "比賽已緊急停止，分數與位置已歸零";
   updateTimerDisplay();
   renderAll();
 }
@@ -1085,6 +989,153 @@ function triggerLandingEffect(stageId) {
     landingEffectTimeout = null;
     renderBoard();
   }, 650);
+}
+
+async function applyTileSurprise(player, roll) {
+  const specialTile = specialTiles[player.position];
+  if (!specialTile) return;
+
+  const actions = {
+    bonus: () => {
+      player.score += 2;
+      return "額外獲得 2 分";
+    },
+    lucky: () => {
+      player.score += roll;
+      return `幸運加成，再獲得 ${roll} 分`;
+    },
+    mystery: () => {
+      player.score += 1;
+      return "神秘獎勵，獲得 1 分";
+    },
+    swap: () => {
+      const target = players
+        .filter((item) => item.id !== player.id)
+        .sort(() => Math.random() - 0.5)[0];
+      if (!target) return "目前沒有可交換的玩家";
+      [player.position, target.position] = [target.position, player.position];
+      return `和 ${target.name} 交換位置`;
+    },
+    trap: () => {
+      player.score = Math.max(0, player.score - 2);
+      return "陷阱扣除 2 分";
+    }
+  };
+
+  const result = actions[specialTile.kind]?.() || "觸發特殊格";
+  renderAll();
+  playEffectSound(specialTile.kind);
+  await showEventCard({
+    title: `${specialTile.label}格`,
+    detail: result,
+    tone: specialTile.kind,
+    kicker: player.name
+  });
+}
+
+async function maybeTriggerRandomEvent(player, roll) {
+  if (Math.random() > 0.42) return;
+  const event = surpriseEvents[Math.floor(Math.random() * surpriseEvents.length)];
+  const result = event.apply({ player, roll });
+  renderAll();
+  playEffectSound(event.tone);
+  await showEventCard({
+    title: event.title,
+    detail: result || event.detail,
+    tone: event.tone,
+    kicker: "隨機事件"
+  });
+}
+
+function getRankingMap() {
+  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  return new Map(sortedPlayers.map((player, index) => [player.id, index]));
+}
+
+function announceRankChange(player, previousRanks) {
+  const previousRank = previousRanks.get(player.id);
+  const currentRank = getRankingMap().get(player.id);
+  if (previousRank === undefined || currentRank === undefined || currentRank >= previousRank) return;
+  const title = currentRank === 0 ? "新領先者" : "成功超車";
+  showEventCard({
+    title,
+    detail: `${player.name} 上升到第 ${currentRank + 1} 名`,
+    tone: "bonus",
+    kicker: "Rank Up",
+    duration: 1200
+  });
+}
+
+function showEventCard({ title, detail, tone = "mystery", kicker = "Surprise", duration = 1450 }) {
+  clearEventCard();
+
+  const layer = document.createElement("div");
+  layer.className = `event-card-layer ${tone}`;
+  layer.innerHTML = `
+    <article class="event-card">
+      <span>${escapeHtml(kicker)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(detail)}</p>
+    </article>
+  `;
+  board.append(layer);
+
+  return new Promise((resolve) => {
+    eventCardResolve = resolve;
+    const finish = () => {
+      layer.remove();
+      eventCardTimeout = null;
+      eventCardResolve = null;
+      resolve();
+    };
+    eventCardTimeout = window.setTimeout(() => {
+      layer.classList.add("leaving");
+      window.setTimeout(finish, 260);
+    }, duration);
+  });
+}
+
+function clearEventCard() {
+  window.clearTimeout(eventCardTimeout);
+  eventCardTimeout = null;
+  document.querySelector(".event-card-layer")?.remove();
+  if (eventCardResolve) {
+    const resolve = eventCardResolve;
+    eventCardResolve = null;
+    resolve();
+  }
+}
+
+function showChampionSpotlight() {
+  const champion = players.find((player) => player.id === championPlayerId);
+  if (!champion) return;
+  document.querySelector(".champion-spotlight")?.remove();
+  window.clearTimeout(championSpotlightTimeout);
+
+  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const runnerText = sortedPlayers
+    .slice(0, 3)
+    .map((player, index) => `${index + 1}. ${player.name} ${player.score} 分`)
+    .join(" / ");
+
+  const spotlight = document.createElement("div");
+  spotlight.className = "champion-spotlight";
+  spotlight.innerHTML = `
+    <article class="champion-card">
+      <div class="champion-label">CHAMPION</div>
+      <div class="champion-avatar" style="background:${champion.color}">
+        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${escapeHtml(champion.name.trim().charAt(0) || "冠")}</span>`}
+      </div>
+      <strong>${escapeHtml(champion.name)}</strong>
+      <span>${champion.score} 分</span>
+      <p>${escapeHtml(runnerText)}</p>
+    </article>
+  `;
+  board.append(spotlight);
+  championSpotlightTimeout = window.setTimeout(() => {
+    spotlight.remove();
+    championSpotlightTimeout = null;
+  }, 4200);
 }
 
 titleInput.addEventListener("input", () => {
