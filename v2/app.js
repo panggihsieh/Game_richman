@@ -332,6 +332,24 @@ function createPlayerId(index) {
   return `player-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`;
 }
 
+function randomInt(maxExclusive) {
+  if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) return 0;
+  const cryptoApi = window.crypto;
+  if (cryptoApi?.getRandomValues) {
+    const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+    const values = new Uint32Array(1);
+    do {
+      cryptoApi.getRandomValues(values);
+    } while (values[0] >= limit);
+    return values[0] % maxExclusive;
+  }
+  return Math.floor(Math.random() * maxExclusive);
+}
+
+function rollDie() {
+  return randomInt(6) + 1;
+}
+
 function getPlayerCount(value = playerCountInput.value) {
   return Math.min(8, Math.max(1, Number(value) || 1));
 }
@@ -544,7 +562,7 @@ function readImage(file, callback) {
 async function rollDice() {
   if (!players.length || rolling || !matchRunning) return;
   rolling = true;
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = rollDie();
   const player = players[currentTurn];
   diceFace.textContent = roll;
   centerDiceFace.textContent = roll;
@@ -852,7 +870,7 @@ function renderLeaderboard() {
 async function rollDice() {
   if (!players.length || rolling || !matchRunning) return;
   rolling = true;
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = rollDie();
   const player = players[currentTurn];
   const previousRanks = getRankingMap();
   await animateDiceRoll(roll);
@@ -999,7 +1017,7 @@ async function animateDiceRoll(finalValue) {
   diceFace.classList.add("rolling");
   centerDiceFace.classList.add("rolling");
   for (let tick = 0; tick < 10; tick += 1) {
-    const face = Math.floor(Math.random() * 6) + 1;
+    const face = rollDie();
     diceFace.textContent = face;
     centerDiceFace.textContent = face;
     await wait(70);
@@ -1035,7 +1053,7 @@ async function moveRobotAfterPlayer() {
   if (!matchRunning) return;
   await wait(2000);
   if (!matchRunning) return;
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = rollDie();
   turnText.textContent = "小機器人自動移動中";
   await animateDiceRoll(roll);
   activeMovingPlayerId = robotPlayer.id;
