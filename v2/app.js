@@ -1121,7 +1121,11 @@ function showChampionSpotlight() {
   const spotlight = document.createElement("div");
   spotlight.className = "champion-spotlight";
   spotlight.innerHTML = `
-    <article class="champion-card">
+    <article class="champion-card winner-bounce">
+      <div class="winner-confetti" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="winner-badge">第一名</div>
       <div class="champion-label">CHAMPION</div>
       <div class="champion-avatar" style="background:${champion.color}">
         ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${escapeHtml(champion.name.trim().charAt(0) || "冠")}</span>`}

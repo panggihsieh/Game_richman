@@ -662,6 +662,7 @@ h1 {
 }
 
 .champion-card {
+  position: relative;
   display: grid;
   gap: 10px;
   justify-items: center;
@@ -673,6 +674,99 @@ h1 {
   background: linear-gradient(135deg, #fff8cc, #ffffff 48%, #ffe27a);
   box-shadow: 0 24px 60px rgba(23, 33, 43, 0.28);
   animation: championCardPop 0.72s cubic-bezier(0.2, 1.4, 0.32, 1) both;
+}
+
+.champion-card.winner-bounce {
+  animation:
+    championCardPop 0.72s cubic-bezier(0.2, 1.4, 0.32, 1) both,
+    winnerCardBounce 1.25s ease-in-out 0.72s 2;
+}
+
+.winner-badge {
+  position: absolute;
+  top: -22px;
+  right: -22px;
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  color: #6b3d00;
+  font-size: 17px;
+  font-weight: 900;
+  background: radial-gradient(circle at 36% 28%, #fff8cc, #ffd34f 58%, #f3a536);
+  box-shadow: 0 12px 30px rgba(243, 165, 54, 0.38);
+  animation: winnerBadgeBounce 0.84s cubic-bezier(0.2, 1.55, 0.34, 1) 0.38s both;
+}
+
+.winner-confetti {
+  position: absolute;
+  inset: -24px;
+  pointer-events: none;
+}
+
+.winner-confetti i {
+  position: absolute;
+  width: 10px;
+  height: 24px;
+  border-radius: 3px;
+  background: var(--red);
+  animation: winnerConfettiFly 1.2s ease-out 0.35s both;
+}
+
+.winner-confetti i:nth-child(1) {
+  top: 18px;
+  left: 18px;
+  background: var(--yellow);
+  --tx: -44px;
+  --ty: -34px;
+  --rot: -38deg;
+}
+
+.winner-confetti i:nth-child(2) {
+  top: 46px;
+  right: 10px;
+  background: var(--teal);
+  --tx: 48px;
+  --ty: -18px;
+  --rot: 44deg;
+}
+
+.winner-confetti i:nth-child(3) {
+  bottom: 38px;
+  left: 8px;
+  background: var(--blue);
+  --tx: -42px;
+  --ty: 28px;
+  --rot: 62deg;
+}
+
+.winner-confetti i:nth-child(4) {
+  right: 32px;
+  bottom: 14px;
+  background: var(--green);
+  --tx: 36px;
+  --ty: 34px;
+  --rot: -54deg;
+}
+
+.winner-confetti i:nth-child(5) {
+  top: -4px;
+  left: 48%;
+  background: #e46a92;
+  --tx: -12px;
+  --ty: -48px;
+  --rot: 86deg;
+}
+
+.winner-confetti i:nth-child(6) {
+  bottom: -6px;
+  left: 55%;
+  background: var(--yellow);
+  --tx: 16px;
+  --ty: 46px;
+  --rot: -82deg;
 }
 
 .champion-label {
@@ -746,6 +840,58 @@ h1 {
   }
 
   100% {
+    opacity: 0;
+  }
+}
+
+@keyframes winnerCardBounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  28% {
+    transform: translateY(-18px) scale(1.06);
+  }
+
+  56% {
+    transform: translateY(5px) scale(0.98);
+  }
+
+  74% {
+    transform: translateY(-7px) scale(1.02);
+  }
+}
+
+@keyframes winnerBadgeBounce {
+  0% {
+    transform: translateY(18px) rotate(12deg) scale(0.2);
+    opacity: 0;
+  }
+
+  62% {
+    transform: translateY(-8px) rotate(-8deg) scale(1.18);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0) rotate(5deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes winnerConfettiFly {
+  0% {
+    transform: translate(0, 0) rotate(0) scale(0.4);
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(1);
     opacity: 0;
   }
 }
