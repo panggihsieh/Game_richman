@@ -54,7 +54,7 @@ const surpriseEvents = [
     detail: "從目前最高分玩家拿走 1 分。",
     tone: "mystery",
     apply: ({ player }) => {
-      const target = players
+      const target = getCompetitors()
         .filter((item) => item.id !== player.id && item.score > 0)
         .sort((a, b) => b.score - a.score)[0];
       if (!target) return "沒有可偷取的分數";
@@ -68,7 +68,7 @@ const surpriseEvents = [
     detail: "與隨機一位玩家交換所在格。",
     tone: "swap",
     apply: ({ player }) => {
-      const candidates = players.filter((item) => item.id !== player.id);
+      const candidates = getCompetitors().filter((item) => item.id !== player.id);
       const target = candidates[Math.floor(Math.random() * candidates.length)];
       if (!target) return "目前沒有可交換的玩家";
       [player.position, target.position] = [target.position, player.position];
@@ -80,7 +80,7 @@ const surpriseEvents = [
     detail: "所有玩家位置重新抽一格。",
     tone: "mystery",
     apply: () => {
-      players.forEach((item) => {
+      getCompetitors().forEach((item) => {
         item.position = Math.floor(Math.random() * stages.length);
       });
       return "全員位置重新洗牌";
@@ -129,6 +129,16 @@ function createStage(item, index) {
 
 let stages = builtInImages.slice(0, boardPositions.length).map(createStage);
 let originalStages = stages.map((stage) => ({ ...stage }));
+
+const robotPlayer = {
+  id: "robot-buddy-player",
+  name: "小機器人",
+  score: 0,
+  position: 0,
+  avatar: "",
+  color: "#8de5df",
+  isRobot: true
+};
 
 let players = [];
 let currentTurn = 0;
@@ -328,6 +338,10 @@ function syncPlayerCount() {
   createPlayers(playerCountInput.value);
 }
 
+function getCompetitors() {
+  return [...players.slice(0, getPlayerCount()), robotPlayer];
+}
+
 function renderAll() {
   if (!matchRunning && players.length !== getPlayerCount()) {
     createPlayers(playerCountInput.value);
@@ -343,6 +357,7 @@ function renderAll() {
 function renderBoard() {
   board.querySelectorAll(".tile").forEach((tile) => tile.remove());
   const visiblePlayers = players.slice(0, getPlayerCount());
+  const visibleTokens = [...visiblePlayers, robotPlayer];
   stages.forEach((stage, index) => {
     const hasSurpriseBox = surpriseBoxStageIds.has(index);
     const tile = document.createElement("article");
@@ -359,13 +374,13 @@ function renderBoard() {
 
     const tokens = document.createElement("div");
     tokens.className = "tokens";
-    visiblePlayers
+    visibleTokens
       .filter((player) => player.position === index)
       .forEach((player, tokenIndex) => {
         const token = document.createElement("span");
-        token.className = `token${player.id === activeMovingPlayerId ? " walking" : ""}`;
+        token.className = `token${player.isRobot ? " robot-token" : ""}${player.id === activeMovingPlayerId ? " walking" : ""}`;
         token.style.background = player.color;
-        token.textContent = player.name.trim().charAt(0) || tokenIndex + 1;
+        token.textContent = player.isRobot ? "機" : player.name.trim().charAt(0) || tokenIndex + 1;
         tokens.append(token);
       });
 
@@ -561,6 +576,8 @@ function startMatch() {
     player.score = 0;
     player.position = 0;
   });
+  robotPlayer.score = 0;
+  robotPlayer.position = 0;
   shuffleStages();
   surpriseBoxStageIds = chooseSurpriseBoxes();
   document.body.classList.add("fullscreen-mode");
@@ -804,7 +821,7 @@ function escapeSvg(value) {
 
 function renderLeaderboard() {
   leaderboard.innerHTML = "";
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const sortedPlayers = getCompetitors().sort((a, b) => b.score - a.score);
   const previousOrder = leaderboardPreviousOrder;
   const risingPlayerId = previousOrder.length === sortedPlayers.length
     ? sortedPlayers.find((player, index) => {
@@ -815,8 +832,8 @@ function renderLeaderboard() {
 
   sortedPlayers.forEach((player) => {
     const pill = document.createElement("div");
-    pill.className = `leader-pill${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
-    pill.innerHTML = `<span class="token" style="background:${player.color}">${escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} 分</span>`;
+    pill.className = `leader-pill${player.isRobot ? " robot-leader" : ""}${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
+    pill.innerHTML = `<span class="token${player.isRobot ? " robot-token" : ""}" style="background:${player.color}">${player.isRobot ? "機" : escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} 分</span>`;
     if (player.id === championPlayerId) {
       const badge = document.createElement("span");
       badge.className = "champion-gif";
@@ -857,9 +874,11 @@ async function rollDice() {
   renderBoard();
   activeMovingPlayerId = null;
   currentTurn = (currentTurn + 1) % players.length;
-  rolling = false;
   renderAll();
   announceRankChange(player, previousRanks);
+  await moveRobotAfterPlayer();
+  rolling = false;
+  renderAll();
 }
 
 function startMatch() {
@@ -908,7 +927,7 @@ function finishMatch() {
   activeMovingPlayerId = null;
   window.clearInterval(matchTimer);
   matchTimer = null;
-  championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
+  championPlayerId = getCompetitors().sort((a, b) => b.score - a.score)[0]?.id || null;
   startMatchButton.textContent = "重新開始比賽";
   startMatchButton.disabled = false;
   emergencyStopButton.disabled = true;
@@ -946,6 +965,8 @@ function emergencyStopMatch() {
     player.score = 0;
     player.position = 0;
   });
+  robotPlayer.score = 0;
+  robotPlayer.position = 0;
   startMatchButton.textContent = "正式開始比賽";
   startMatchButton.disabled = false;
   emergencyStopButton.disabled = true;
@@ -1007,6 +1028,32 @@ function triggerLandingEffect(stageId) {
   }, 650);
 }
 
+async function moveRobotAfterPlayer() {
+  if (!matchRunning) return;
+  const roll = Math.floor(Math.random() * 6) + 1;
+  turnText.textContent = "小機器人自動移動中";
+  await animateDiceRoll(roll);
+  activeMovingPlayerId = robotPlayer.id;
+  for (let step = 0; step < roll; step += 1) {
+    if (!matchRunning) break;
+    robotPlayer.position = (robotPlayer.position + 1) % stages.length;
+    playStepSound(step + 1);
+    renderBoard();
+    await wait(220);
+  }
+  if (!matchRunning) {
+    activeMovingPlayerId = null;
+    renderAll();
+    return;
+  }
+  triggerLandingEffect(robotPlayer.position);
+  await wait(360);
+  robotPlayer.score += roll;
+  await applySurpriseBox(robotPlayer, roll);
+  activeMovingPlayerId = null;
+  renderAll();
+}
+
 async function applySurpriseBox(player, roll) {
   if (!surpriseBoxStageIds.has(player.position)) return false;
   const event = surpriseEvents[Math.floor(Math.random() * surpriseEvents.length)];
@@ -1023,7 +1070,7 @@ async function applySurpriseBox(player, roll) {
 }
 
 function getRankingMap() {
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const sortedPlayers = getCompetitors().sort((a, b) => b.score - a.score);
   return new Map(sortedPlayers.map((player, index) => [player.id, index]));
 }
 
@@ -1082,12 +1129,12 @@ function clearEventCard() {
 }
 
 function showChampionSpotlight() {
-  const champion = players.find((player) => player.id === championPlayerId);
+  const champion = getCompetitors().find((player) => player.id === championPlayerId);
   if (!champion) return;
   document.querySelector(".champion-spotlight")?.remove();
   window.clearTimeout(championSpotlightTimeout);
 
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const sortedPlayers = getCompetitors().sort((a, b) => b.score - a.score);
   const runnerText = sortedPlayers
     .slice(0, 3)
     .map((player, index) => `${index + 1}. ${player.name} ${player.score} 分`)
@@ -1103,7 +1150,7 @@ function showChampionSpotlight() {
       <div class="winner-badge">第一名</div>
       <div class="champion-label">CHAMPION</div>
       <div class="champion-avatar" style="background:${champion.color}">
-        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${escapeHtml(champion.name.trim().charAt(0) || "冠")}</span>`}
+        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${champion.isRobot ? "機" : escapeHtml(champion.name.trim().charAt(0) || "冠")}</span>`}
       </div>
       <strong>${escapeHtml(champion.name)}</strong>
       <span>${champion.score} 分</span>
