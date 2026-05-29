@@ -308,30 +308,45 @@ function iconSvg(icon) {
   return icons[icon] || icons.flag;
 }
 
+// 取得不重複的隨機關卡生物名稱，並排除已使用的名字，防止玩家預設名稱重複
 function getUniqueRandomStageLabels(count, excludeNames = []) {
   if (!stages || !stages.length) return Array.from({ length: count }, (_, i) => `玩家 ${i + 1}`);
+  
+  // 1. 從 12 道關卡取得生物名稱，並排除掉已在場上活躍的玩家名稱
   const labels = stages
     .map((s) => s.label || s.name)
     .filter((label) => !excludeNames.includes(label));
+    
+  // 2. 使用 Fisher-Yates 演算法隨機打亂候選生物名稱
   for (let i = labels.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [labels[i], labels[j]] = [labels[j], labels[i]];
   }
+  
+  // 3. 回傳需要數量的新生物名稱
   return labels.slice(0, count);
 }
 
+// 根據玩家人數建立或調整玩家資料
 function createPlayers(count) {
   const safeCount = getPlayerCount(count);
-  const oldPlayers = players.slice(0, safeCount);
-  const existingNames = oldPlayers.map((p) => p.name);
-  const neededCount = Math.max(0, safeCount - oldPlayers.length);
+  const oldPlayers = players.slice(0, safeCount); // 保留目前已存在且在安全範圍內的舊玩家
+  const existingNames = oldPlayers.map((p) => p.name); // 收集目前所有舊玩家已使用的名字
+  const neededCount = Math.max(0, safeCount - oldPlayers.length); // 計算還需要新增幾位新玩家
+  
+  // 取得不重複且排除了舊玩家名字的隨機關卡生物名稱清單
   const newLabels = getUniqueRandomStageLabels(neededCount, existingNames);
   let newPlayerLabelIndex = 0;
+  
+  // 重新建立玩家陣列
   players = Array.from({ length: safeCount }, (_, index) => {
     const existing = oldPlayers[index];
-    if (existing) return existing;
+    if (existing) return existing; // 如果玩家本來就存在，直接沿用舊玩家資料
+    
+    // 如果是新玩家，分配隨機且不重複的生物名稱
     const name = newLabels[newPlayerLabelIndex] || `玩家 ${index + 1}`;
     newPlayerLabelIndex += 1;
+    
     return {
       id: createPlayerId(index),
       name,
