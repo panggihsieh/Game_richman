@@ -112,8 +112,9 @@ const localStageImages = [
 ];
 
 const stageImageFocus = {
-  0: { position: "58% 28%", scale: 1.32, origin: "58% 28%" },
-  1: { position: "34% 34%", scale: 1.28, origin: "34% 34%" }
+  0: { position: "62% 24%", scale: 1.18, origin: "62% 24%" },
+  1: { position: "30% 10%", scale: 1, origin: "30% 10%" },
+  5: { position: "36% 58%", scale: 1.15, origin: "36% 58%" }
 };
 
 function createStage(item, index) {
