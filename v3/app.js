@@ -1077,7 +1077,8 @@ async function moveRobotAfterPlayer() {
   if (!matchRunning) return;
   await wait(1000);
   if (!matchRunning) return;
-  const roll = rollDie();
+  // 機器人的隨機部署（擲骰點數）比人類玩家減 2（最少為 1）
+  const roll = Math.max(1, rollDie() - 2);
   turnText.textContent = "小機器人自動移動中";
   await animateDiceRoll(roll);
   activeMovingPlayerId = robotPlayer.id;
