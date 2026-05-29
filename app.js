@@ -308,14 +308,25 @@ function iconSvg(icon) {
   return icons[icon] || icons.flag;
 }
 
+function getUniqueRandomStageLabels(count) {
+  if (!stages || !stages.length) return Array.from({ length: count }, (_, i) => `玩家 ${i + 1}`);
+  const labels = stages.map((s) => s.label || s.name);
+  for (let i = labels.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [labels[i], labels[j]] = [labels[j], labels[i]];
+  }
+  return labels.slice(0, count);
+}
+
 function createPlayers(count) {
   const safeCount = getPlayerCount(count);
   const oldPlayers = players;
+  const uniqueLabels = getUniqueRandomStageLabels(safeCount);
   players = Array.from({ length: safeCount }, (_, index) => {
     const existing = oldPlayers[index];
     return existing || {
       id: createPlayerId(index),
-      name: `玩家 ${index + 1}`,
+      name: uniqueLabels[index] || `玩家 ${index + 1}`,
       score: 0,
       position: 0,
       avatar: "",
