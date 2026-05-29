@@ -30,14 +30,6 @@ const boardPositions = [
   [3, 1], [2, 1]
 ];
 
-const specialTiles = {
-  2: { kind: "bonus", label: "加分", icon: "+2" },
-  4: { kind: "lucky", label: "幸運", icon: "LU" },
-  6: { kind: "mystery", label: "神秘", icon: "?" },
-  8: { kind: "swap", label: "交換", icon: "SW" },
-  10: { kind: "trap", label: "陷阱", icon: "-2" }
-};
-
 const surpriseEvents = [
   {
     title: "加倍得分",
@@ -62,7 +54,7 @@ const surpriseEvents = [
     detail: "從目前最高分玩家拿走 1 分。",
     tone: "mystery",
     apply: ({ player }) => {
-      const target = players
+      const target = getCompetitors()
         .filter((item) => item.id !== player.id && item.score > 0)
         .sort((a, b) => b.score - a.score)[0];
       if (!target) return "沒有可偷取的分數";
@@ -76,7 +68,7 @@ const surpriseEvents = [
     detail: "與隨機一位玩家交換所在格。",
     tone: "swap",
     apply: ({ player }) => {
-      const candidates = players.filter((item) => item.id !== player.id);
+      const candidates = getCompetitors().filter((item) => item.id !== player.id);
       const target = candidates[Math.floor(Math.random() * candidates.length)];
       if (!target) return "目前沒有可交換的玩家";
       [player.position, target.position] = [target.position, player.position];
@@ -88,7 +80,7 @@ const surpriseEvents = [
     detail: "所有玩家位置重新抽一格。",
     tone: "mystery",
     apply: () => {
-      players.forEach((item) => {
+      getCompetitors().forEach((item) => {
         item.position = Math.floor(Math.random() * stages.length);
       });
       return "全員位置重新洗牌";
@@ -119,6 +111,12 @@ const localStageImages = [
   "assets/stages/20-suckermouth-catfish.jpg"
 ];
 
+const stageImageFocus = {
+  0: { position: "62% 24%", scale: 1.18, origin: "62% 24%" },
+  1: { position: "30% 10%", scale: 1, origin: "30% 10%" },
+  5: { position: "36% 58%", scale: 1.15, origin: "36% 58%" }
+};
+
 function createStage(item, index) {
   const builtIn = localStageImages[index] || makeStageImage(item);
   return {
@@ -131,12 +129,23 @@ function createStage(item, index) {
     builtIn,
     image: builtIn,
     boardImage: builtIn,
+    imageFocus: stageImageFocus[index] || null,
     customImage: ""
   };
 }
 
 let stages = builtInImages.slice(0, boardPositions.length).map(createStage);
 let originalStages = stages.map((stage) => ({ ...stage }));
+
+const robotPlayer = {
+  id: "robot-buddy-player",
+  name: "小機器人",
+  score: 0,
+  position: 0,
+  avatar: "",
+  color: "#8de5df",
+  isRobot: true
+};
 
 let players = [];
 let currentTurn = 0;
@@ -156,6 +165,7 @@ let leaderboardPreviousOrder = [];
 let championSpotlightTimeout = null;
 let eventCardTimeout = null;
 let eventCardResolve = null;
+let surpriseBoxStageIds = new Set();
 
 const board = document.querySelector("#board");
 const stageEditor = document.querySelector("#stageEditor");
@@ -323,8 +333,26 @@ function createPlayerId(index) {
   return `player-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`;
 }
 
+function randomInt(maxExclusive) {
+  if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) return 0;
+  const cryptoApi = window.crypto;
+  if (cryptoApi?.getRandomValues) {
+    const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+    const values = new Uint32Array(1);
+    do {
+      cryptoApi.getRandomValues(values);
+    } while (values[0] >= limit);
+    return values[0] % maxExclusive;
+  }
+  return Math.floor(Math.random() * maxExclusive);
+}
+
+function rollDie() {
+  return randomInt(6) + 1;
+}
+
 function getPlayerCount(value = playerCountInput.value) {
-  return Math.min(8, Math.max(2, Number(value) || 2));
+  return Math.min(8, Math.max(1, Number(value) || 1));
 }
 
 function syncPlayerCount() {
@@ -333,6 +361,10 @@ function syncPlayerCount() {
     return;
   }
   createPlayers(playerCountInput.value);
+}
+
+function getCompetitors() {
+  return [...players.slice(0, getPlayerCount()), robotPlayer];
 }
 
 function renderAll() {
@@ -350,29 +382,35 @@ function renderAll() {
 function renderBoard() {
   board.querySelectorAll(".tile").forEach((tile) => tile.remove());
   const visiblePlayers = players.slice(0, getPlayerCount());
+  const visibleTokens = [...visiblePlayers, robotPlayer];
   stages.forEach((stage, index) => {
-    const specialTile = specialTiles[index];
+    const hasSurpriseBox = surpriseBoxStageIds.has(index);
     const tile = document.createElement("article");
-    tile.className = `tile${index === 0 ? " start" : ""}${specialTile ? ` special ${specialTile.kind}` : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
+    tile.className = `tile${index === 0 ? " start" : ""}${hasSurpriseBox ? " special blind-box" : ""}${visiblePlayers.some((player) => player.position === index) ? " active" : ""}${index === landingStageId ? " landing" : ""}`;
     const position = boardPositions[index];
     if (position) {
-      tile.style.gridRow = position[0];
-      tile.style.gridColumn = position[1];
+      tile.style.gridRow = `${position[0]} / span 1`;
+      tile.style.gridColumn = `${position[1]} / span 1`;
     }
 
     const img = document.createElement("img");
     img.src = stage.boardImage || stage.image;
     img.alt = stage.name;
+    if (stage.imageFocus) {
+      img.style.objectPosition = stage.imageFocus.position;
+      img.style.transform = `scale(${stage.imageFocus.scale})`;
+      img.style.transformOrigin = stage.imageFocus.origin;
+    }
 
     const tokens = document.createElement("div");
     tokens.className = "tokens";
-    visiblePlayers
+    visibleTokens
       .filter((player) => player.position === index)
       .forEach((player, tokenIndex) => {
         const token = document.createElement("span");
-        token.className = `token${player.id === activeMovingPlayerId ? " walking" : ""}`;
+        token.className = `token${player.isRobot ? " robot-token" : ""}${player.id === activeMovingPlayerId ? " walking" : ""}`;
         token.style.background = player.color;
-        token.textContent = player.name.trim().charAt(0) || tokenIndex + 1;
+        token.textContent = player.isRobot ? "機" : player.name.trim().charAt(0) || tokenIndex + 1;
         tokens.append(token);
       });
 
@@ -381,14 +419,15 @@ function renderBoard() {
     const title = document.createElement("span");
     title.textContent = `${index + 1}. ${stage.name}`;
     name.append(title);
-    if (specialTile) {
+    if (hasSurpriseBox) {
       const badge = document.createElement("strong");
-      badge.className = "tile-badge";
-      badge.textContent = specialTile.label;
+      badge.className = "tile-badge blind";
+      badge.textContent = "特殊盲盒";
       name.append(badge);
     }
 
-    tile.append(img, tokens, name);
+    tile.append(img, tokens);
+    tile.append(name);
     board.append(tile);
   });
 }
@@ -524,7 +563,7 @@ function readImage(file, callback) {
 async function rollDice() {
   if (!players.length || rolling || !matchRunning) return;
   rolling = true;
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = rollDie();
   const player = players[currentTurn];
   diceFace.textContent = roll;
   centerDiceFace.textContent = roll;
@@ -559,7 +598,10 @@ function startMatch() {
     player.score = 0;
     player.position = 0;
   });
+  robotPlayer.score = 0;
+  robotPlayer.position = 0;
   shuffleStages();
+  surpriseBoxStageIds = new Set();
   document.body.classList.add("fullscreen-mode");
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
@@ -608,6 +650,7 @@ function emergencyStopMatch() {
   diceFace.textContent = "1";
   centerDiceFace.textContent = "1";
   stages = originalStages.map((stage) => ({ ...stage }));
+  surpriseBoxStageIds = new Set();
   players.forEach((player) => {
     player.score = 0;
     player.position = 0;
@@ -651,6 +694,17 @@ function updateOriginalStage(stage) {
   originalStages = originalStages.map((item) => (item.id === stage.id ? { ...stage } : item));
 }
 
+function chooseSurpriseBoxes() {
+  const candidates = stages
+    .map((_, index) => index)
+    .filter((index) => index !== 0);
+  return new Set(candidates
+    .map((stageId) => ({ stageId, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .slice(0, 4)
+    .map((item) => item.stageId));
+}
+
 function playStepSound(step) {
   if (!window.AudioContext && !window.webkitAudioContext) return;
   audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
@@ -664,6 +718,30 @@ function playStepSound(step) {
   gain.connect(audioContext.destination);
   oscillator.start();
   oscillator.stop(audioContext.currentTime + 0.09);
+}
+
+function playRobotStepSound(step) {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+  const startTime = audioContext.currentTime;
+  const baseFrequency = step % 2 ? 260 : 320;
+  [
+    { type: "square", frequency: baseFrequency, gain: 0.105 },
+    { type: "sawtooth", frequency: baseFrequency * 1.74, gain: 0.038 }
+  ].forEach((voice) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = voice.type;
+    oscillator.frequency.setValueAtTime(voice.frequency, startTime);
+    oscillator.frequency.exponentialRampToValueAtTime(voice.frequency * 0.72, startTime + 0.075);
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(voice.gain, startTime + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.11);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + 0.12);
+  });
 }
 
 function playVictorySound() {
@@ -789,7 +867,7 @@ function escapeSvg(value) {
 
 function renderLeaderboard() {
   leaderboard.innerHTML = "";
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const sortedPlayers = getCompetitors().sort((a, b) => b.score - a.score);
   const previousOrder = leaderboardPreviousOrder;
   const risingPlayerId = previousOrder.length === sortedPlayers.length
     ? sortedPlayers.find((player, index) => {
@@ -800,8 +878,8 @@ function renderLeaderboard() {
 
   sortedPlayers.forEach((player) => {
     const pill = document.createElement("div");
-    pill.className = `leader-pill${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
-    pill.innerHTML = `<span class="token" style="background:${player.color}">${escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} 分</span>`;
+    pill.className = `leader-pill${player.isRobot ? " robot-leader" : ""}${player.id === championPlayerId ? " champion" : ""}${player.id === risingPlayerId ? " rank-up" : ""}`;
+    pill.innerHTML = `<span class="token${player.isRobot ? " robot-token" : ""}" style="background:${player.color}">${player.isRobot ? "機" : escapeHtml(player.name.trim().charAt(0) || "?")}</span><strong>${escapeHtml(player.name)}</strong><span>${player.score} 分</span>`;
     if (player.id === championPlayerId) {
       const badge = document.createElement("span");
       badge.className = "champion-gif";
@@ -817,7 +895,7 @@ function renderLeaderboard() {
 async function rollDice() {
   if (!players.length || rolling || !matchRunning) return;
   rolling = true;
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = rollDie();
   const player = players[currentTurn];
   const previousRanks = getRankingMap();
   await animateDiceRoll(roll);
@@ -838,14 +916,15 @@ async function rollDice() {
   triggerLandingEffect(player.position);
   await wait(420);
   player.score += roll;
-  await applyTileSurprise(player, roll);
-  await maybeTriggerRandomEvent(player, roll);
+  await applySurpriseBox(player, roll);
   renderBoard();
   activeMovingPlayerId = null;
   currentTurn = (currentTurn + 1) % players.length;
-  rolling = false;
   renderAll();
   announceRankChange(player, previousRanks);
+  await moveRobotAfterPlayer();
+  rolling = false;
+  renderAll();
 }
 
 function startMatch() {
@@ -867,6 +946,7 @@ function startMatch() {
     player.position = 0;
   });
   shuffleStages();
+  surpriseBoxStageIds = new Set();
   document.body.classList.add("fullscreen-mode");
   fullscreenToggle.textContent = "離開全螢幕";
   startMatchButton.textContent = "比賽進行中";
@@ -893,7 +973,7 @@ function finishMatch() {
   activeMovingPlayerId = null;
   window.clearInterval(matchTimer);
   matchTimer = null;
-  championPlayerId = [...players].sort((a, b) => b.score - a.score)[0]?.id || null;
+  championPlayerId = getCompetitors().sort((a, b) => b.score - a.score)[0]?.id || null;
   startMatchButton.textContent = "重新開始比賽";
   startMatchButton.disabled = false;
   emergencyStopButton.disabled = true;
@@ -926,10 +1006,13 @@ function emergencyStopMatch() {
   diceFace.textContent = "1";
   centerDiceFace.textContent = "1";
   stages = originalStages.map((stage) => ({ ...stage }));
+  surpriseBoxStageIds = new Set();
   players.forEach((player) => {
     player.score = 0;
     player.position = 0;
   });
+  robotPlayer.score = 0;
+  robotPlayer.position = 0;
   startMatchButton.textContent = "正式開始比賽";
   startMatchButton.disabled = false;
   emergencyStopButton.disabled = true;
@@ -959,7 +1042,7 @@ async function animateDiceRoll(finalValue) {
   diceFace.classList.add("rolling");
   centerDiceFace.classList.add("rolling");
   for (let tick = 0; tick < 10; tick += 1) {
-    const face = Math.floor(Math.random() * 6) + 1;
+    const face = rollDie();
     diceFace.textContent = face;
     centerDiceFace.textContent = face;
     await wait(70);
@@ -991,50 +1074,36 @@ function triggerLandingEffect(stageId) {
   }, 650);
 }
 
-async function applyTileSurprise(player, roll) {
-  const specialTile = specialTiles[player.position];
-  if (!specialTile) return;
-
-  const actions = {
-    bonus: () => {
-      player.score += 2;
-      return "額外獲得 2 分";
-    },
-    lucky: () => {
-      player.score += roll;
-      return `幸運加成，再獲得 ${roll} 分`;
-    },
-    mystery: () => {
-      player.score += 1;
-      return "神秘獎勵，獲得 1 分";
-    },
-    swap: () => {
-      const target = players
-        .filter((item) => item.id !== player.id)
-        .sort(() => Math.random() - 0.5)[0];
-      if (!target) return "目前沒有可交換的玩家";
-      [player.position, target.position] = [target.position, player.position];
-      return `和 ${target.name} 交換位置`;
-    },
-    trap: () => {
-      player.score = Math.max(0, player.score - 2);
-      return "陷阱扣除 2 分";
-    }
-  };
-
-  const result = actions[specialTile.kind]?.() || "觸發特殊格";
+async function moveRobotAfterPlayer() {
+  if (!matchRunning) return;
+  await wait(1000);
+  if (!matchRunning) return;
+  const roll = rollDie();
+  turnText.textContent = "小機器人自動移動中";
+  await animateDiceRoll(roll);
+  activeMovingPlayerId = robotPlayer.id;
+  for (let step = 0; step < roll; step += 1) {
+    if (!matchRunning) break;
+    robotPlayer.position = (robotPlayer.position + 1) % stages.length;
+    playRobotStepSound(step + 1);
+    renderBoard();
+    await wait(220);
+  }
+  if (!matchRunning) {
+    activeMovingPlayerId = null;
+    renderAll();
+    return;
+  }
+  triggerLandingEffect(robotPlayer.position);
+  await wait(360);
+  robotPlayer.score += roll;
+  await applySurpriseBox(robotPlayer, roll);
+  activeMovingPlayerId = null;
   renderAll();
-  playEffectSound(specialTile.kind);
-  await showEventCard({
-    title: `${specialTile.label}格`,
-    detail: result,
-    tone: specialTile.kind,
-    kicker: player.name
-  });
 }
 
-async function maybeTriggerRandomEvent(player, roll) {
-  if (Math.random() > 0.42) return;
+async function applySurpriseBox(player, roll) {
+  if (!surpriseBoxStageIds.has(player.position)) return false;
   const event = surpriseEvents[Math.floor(Math.random() * surpriseEvents.length)];
   const result = event.apply({ player, roll });
   renderAll();
@@ -1043,12 +1112,13 @@ async function maybeTriggerRandomEvent(player, roll) {
     title: event.title,
     detail: result || event.detail,
     tone: event.tone,
-    kicker: "隨機事件"
+    kicker: "驚喜盲盒"
   });
+  return true;
 }
 
 function getRankingMap() {
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const sortedPlayers = getCompetitors().sort((a, b) => b.score - a.score);
   return new Map(sortedPlayers.map((player, index) => [player.id, index]));
 }
 
@@ -1107,12 +1177,12 @@ function clearEventCard() {
 }
 
 function showChampionSpotlight() {
-  const champion = players.find((player) => player.id === championPlayerId);
+  const champion = getCompetitors().find((player) => player.id === championPlayerId);
   if (!champion) return;
   document.querySelector(".champion-spotlight")?.remove();
   window.clearTimeout(championSpotlightTimeout);
 
-  const sortedPlayers = players.slice(0, getPlayerCount()).sort((a, b) => b.score - a.score);
+  const sortedPlayers = getCompetitors().sort((a, b) => b.score - a.score);
   const runnerText = sortedPlayers
     .slice(0, 3)
     .map((player, index) => `${index + 1}. ${player.name} ${player.score} 分`)
@@ -1121,10 +1191,14 @@ function showChampionSpotlight() {
   const spotlight = document.createElement("div");
   spotlight.className = "champion-spotlight";
   spotlight.innerHTML = `
-    <article class="champion-card">
+    <article class="champion-card winner-bounce">
+      <div class="winner-confetti" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="winner-badge">第一名</div>
       <div class="champion-label">CHAMPION</div>
       <div class="champion-avatar" style="background:${champion.color}">
-        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${escapeHtml(champion.name.trim().charAt(0) || "冠")}</span>`}
+        ${champion.avatar ? `<img src="${champion.avatar}" alt="${escapeHtml(champion.name)}">` : `<span>${champion.isRobot ? "機" : escapeHtml(champion.name.trim().charAt(0) || "冠")}</span>`}
       </div>
       <strong>${escapeHtml(champion.name)}</strong>
       <span>${champion.score} 分</span>
@@ -1139,8 +1213,8 @@ function showChampionSpotlight() {
 }
 
 titleInput.addEventListener("input", () => {
-  displayTitle.textContent = titleInput.value || "線上大富翁";
-  document.title = titleInput.value || "線上大富翁";
+  displayTitle.textContent = titleInput.value || "生態大富翁v2";
+  document.title = titleInput.value || "生態大富翁v2";
 });
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);

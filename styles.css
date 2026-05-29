@@ -460,8 +460,9 @@ h1 {
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  height: 100%;
+  align-self: stretch;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   border: 2px solid var(--ink);
   border-radius: 8px;
@@ -490,24 +491,43 @@ h1 {
   z-index: 1;
 }
 
-.tile.special.bonus {
-  border-color: var(--yellow);
+.tile.blind-box {
+  border-color: #e46a92;
+  background: #fff7fb;
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, 0.68),
+    0 0 0 4px rgba(228, 106, 146, 0.18),
+    0 14px 32px rgba(228, 106, 146, 0.16);
 }
 
-.tile.special.lucky {
-  border-color: var(--green);
+.tile.blind-box::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.72), transparent 31%),
+    radial-gradient(circle at 21% 18%, rgba(255, 255, 255, 0.66), transparent 16%),
+    radial-gradient(circle at 82% 24%, rgba(243, 189, 50, 0.5), transparent 15%),
+    linear-gradient(135deg, rgba(228, 106, 146, 0.22), transparent 52%);
+  animation: blindBoxGlow 1.45s ease-in-out infinite alternate;
 }
 
-.tile.special.mystery {
-  border-color: var(--blue);
-}
-
-.tile.special.swap {
-  border-color: var(--teal);
-}
-
-.tile.special.trap {
-  border-color: var(--red);
+.tile.blind-box::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 10px;
+  pointer-events: none;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 24% 26%, #fff6c7 0 3px, transparent 4px),
+    radial-gradient(circle at 72% 20%, #ffffff 0 3px, transparent 4px),
+    radial-gradient(circle at 76% 64%, #ffe0ef 0 4px, transparent 5px),
+    radial-gradient(circle at 31% 72%, #ffffff 0 2px, transparent 3px);
+  opacity: 0.82;
+  animation: blindBoxSparkles 1.35s ease-in-out infinite alternate;
 }
 
 .tile.active {
@@ -531,9 +551,12 @@ h1 {
   object-fit: cover;
   object-position: center center;
   background: #111827;
+  transition: transform 0.2s ease;
 }
 
 .tile-name {
+  position: relative;
+  z-index: 4;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 5px;
@@ -547,8 +570,10 @@ h1 {
 }
 
 .tile-badge {
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   min-width: 34px;
   border-radius: 999px;
   padding: 3px 7px;
@@ -558,8 +583,43 @@ h1 {
   background: #fff;
 }
 
+.tile-badge.blind {
+  color: #7a2450;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: linear-gradient(135deg, #ffe0ef, #fff6c7);
+  box-shadow: 0 4px 12px rgba(122, 36, 80, 0.18);
+}
+
+.tile-badge.blind::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  flex: 0 0 auto;
+  background: #fff6c7;
+  image-rendering: pixelated;
+  box-shadow:
+    0 -8px 0 #fff6c7,
+    -4px -4px 0 #fff6c7,
+    4px -4px 0 #fff6c7,
+    -8px 0 0 #7a2450,
+    -4px 0 0 #e46a92,
+    0 0 0 #fff6c7,
+    4px 0 0 #e46a92,
+    8px 0 0 #7a2450,
+    -8px 4px 0 #7a2450,
+    -4px 4px 0 #e46a92,
+    0 4px 0 #fff6c7,
+    4px 4px 0 #e46a92,
+    8px 4px 0 #7a2450,
+    -4px 8px 0 #7a2450,
+    0 8px 0 #7a2450,
+    4px 8px 0 #7a2450;
+  animation: pixelBlindBoxGif 0.72s steps(2, end) infinite;
+}
+
 .tokens {
   position: absolute;
+  z-index: 5;
   top: 6px;
   left: 6px;
   right: 6px;
@@ -569,6 +629,8 @@ h1 {
 }
 
 .token {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   width: 24px;
@@ -581,8 +643,70 @@ h1 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
 }
 
+.token.robot-token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  border-color: var(--ink);
+  border-width: 2px;
+  border-radius: 8px;
+  color: transparent;
+  font-size: 0;
+  image-rendering: pixelated;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.46), transparent 36%),
+    #8de5df !important;
+  box-shadow:
+    inset 0 -3px 0 rgba(31, 126, 124, 0.24),
+    0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.token.robot-token::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--ink);
+  box-shadow:
+    8px 0 0 var(--ink),
+    -5px 8px 0 #ff7fb3,
+    13px 8px 0 #ff7fb3,
+    4px 7px 0 #fff6c7,
+    4px -15px 0 var(--ink),
+    4px -20px 0 #f4be37;
+  animation: robotFaceGif 1.2s steps(2, end) infinite;
+}
+
+.token.robot-token::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: -5px;
+  height: 5px;
+  border-radius: 0 0 4px 4px;
+  background: #fff6c7;
+  box-shadow:
+    -3px 0 0 var(--ink),
+    3px 0 0 var(--ink);
+}
+
 .token.walking {
   animation: tokenWalk 0.26s ease-in-out infinite alternate;
+}
+
+.token.robot-token.walking {
+  animation: robotTokenWalk 0.34s steps(2, end) infinite;
+}
+
+.leader-pill.robot-leader {
+  border-color: rgba(22, 143, 139, 0.44);
+  background: #f0fffd;
+}
+
+.leader-pill.robot-leader .robot-token {
+  animation: leaderboardRobotGif 0.82s steps(2, end) infinite;
 }
 
 .champion-spotlight {
@@ -662,6 +786,7 @@ h1 {
 }
 
 .champion-card {
+  position: relative;
   display: grid;
   gap: 10px;
   justify-items: center;
@@ -673,6 +798,99 @@ h1 {
   background: linear-gradient(135deg, #fff8cc, #ffffff 48%, #ffe27a);
   box-shadow: 0 24px 60px rgba(23, 33, 43, 0.28);
   animation: championCardPop 0.72s cubic-bezier(0.2, 1.4, 0.32, 1) both;
+}
+
+.champion-card.winner-bounce {
+  animation:
+    championCardPop 0.72s cubic-bezier(0.2, 1.4, 0.32, 1) both,
+    winnerCardBounce 1.25s ease-in-out 0.72s 2;
+}
+
+.winner-badge {
+  position: absolute;
+  top: -22px;
+  right: -22px;
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  color: #6b3d00;
+  font-size: 17px;
+  font-weight: 900;
+  background: radial-gradient(circle at 36% 28%, #fff8cc, #ffd34f 58%, #f3a536);
+  box-shadow: 0 12px 30px rgba(243, 165, 54, 0.38);
+  animation: winnerBadgeBounce 0.84s cubic-bezier(0.2, 1.55, 0.34, 1) 0.38s both;
+}
+
+.winner-confetti {
+  position: absolute;
+  inset: -24px;
+  pointer-events: none;
+}
+
+.winner-confetti i {
+  position: absolute;
+  width: 10px;
+  height: 24px;
+  border-radius: 3px;
+  background: var(--red);
+  animation: winnerConfettiFly 1.2s ease-out 0.35s both;
+}
+
+.winner-confetti i:nth-child(1) {
+  top: 18px;
+  left: 18px;
+  background: var(--yellow);
+  --tx: -44px;
+  --ty: -34px;
+  --rot: -38deg;
+}
+
+.winner-confetti i:nth-child(2) {
+  top: 46px;
+  right: 10px;
+  background: var(--teal);
+  --tx: 48px;
+  --ty: -18px;
+  --rot: 44deg;
+}
+
+.winner-confetti i:nth-child(3) {
+  bottom: 38px;
+  left: 8px;
+  background: var(--blue);
+  --tx: -42px;
+  --ty: 28px;
+  --rot: 62deg;
+}
+
+.winner-confetti i:nth-child(4) {
+  right: 32px;
+  bottom: 14px;
+  background: var(--green);
+  --tx: 36px;
+  --ty: 34px;
+  --rot: -54deg;
+}
+
+.winner-confetti i:nth-child(5) {
+  top: -4px;
+  left: 48%;
+  background: #e46a92;
+  --tx: -12px;
+  --ty: -48px;
+  --rot: 86deg;
+}
+
+.winner-confetti i:nth-child(6) {
+  bottom: -6px;
+  left: 55%;
+  background: var(--yellow);
+  --tx: 16px;
+  --ty: 46px;
+  --rot: -82deg;
 }
 
 .champion-label {
@@ -723,6 +941,88 @@ h1 {
   }
 }
 
+@keyframes robotTokenWalk {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+
+  25% {
+    transform: translateY(-4px) translateX(1px) scale(1.04);
+  }
+
+  50% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+
+  75% {
+    transform: translateY(-4px) translateX(-1px) scale(1.04);
+  }
+
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+}
+
+@keyframes leaderboardRobotGif {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg) scale(1);
+  }
+
+  50% {
+    transform: translateY(-4px) rotate(2deg) scale(1.08);
+  }
+}
+
+@keyframes robotFaceGif {
+  0%,
+  84%,
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+
+  88% {
+    transform: scaleY(0.42);
+    filter: brightness(1.15);
+  }
+}
+
+@keyframes blindBoxGlow {
+  from {
+    opacity: 0.72;
+    filter: saturate(1) brightness(1);
+  }
+
+  to {
+    opacity: 1;
+    filter: saturate(1.25) brightness(1.08);
+  }
+}
+
+@keyframes blindBoxSparkles {
+  from {
+    transform: scale(0.98) rotate(-1deg);
+    opacity: 0.48;
+  }
+
+  to {
+    transform: scale(1.04) rotate(1deg);
+    opacity: 0.95;
+  }
+}
+
+@keyframes pixelBlindBoxGif {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
 @keyframes championCardPop {
   from {
     transform: translateY(20px) scale(0.72);
@@ -746,6 +1046,58 @@ h1 {
   }
 
   100% {
+    opacity: 0;
+  }
+}
+
+@keyframes winnerCardBounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  28% {
+    transform: translateY(-18px) scale(1.06);
+  }
+
+  56% {
+    transform: translateY(5px) scale(0.98);
+  }
+
+  74% {
+    transform: translateY(-7px) scale(1.02);
+  }
+}
+
+@keyframes winnerBadgeBounce {
+  0% {
+    transform: translateY(18px) rotate(12deg) scale(0.2);
+    opacity: 0;
+  }
+
+  62% {
+    transform: translateY(-8px) rotate(-8deg) scale(1.18);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0) rotate(5deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes winnerConfettiFly {
+  0% {
+    transform: translate(0, 0) rotate(0) scale(0.4);
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(1);
     opacity: 0;
   }
 }
@@ -983,16 +1335,21 @@ canvas {
     max-width: none;
   }
 
+  body.fullscreen-mode .match-control {
+    grid-template-columns: minmax(120px, 170px) minmax(170px, 240px);
+    grid-column: 2 / 4;
+    grid-row: 2 / 4;
+    max-width: 430px;
+  }
+
   .board {
     grid-template-columns: repeat(4, minmax(72px, 1fr));
-    grid-template-rows: none;
+    grid-template-rows: repeat(4, minmax(74px, 1fr));
     min-height: 0;
   }
 
   .tile {
-    aspect-ratio: 1;
-    grid-column: auto !important;
-    grid-row: auto !important;
+    min-height: 0;
   }
 
   .board::before {
