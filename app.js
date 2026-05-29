@@ -308,9 +308,11 @@ function iconSvg(icon) {
   return icons[icon] || icons.flag;
 }
 
-function getUniqueRandomStageLabels(count) {
+function getUniqueRandomStageLabels(count, excludeNames = []) {
   if (!stages || !stages.length) return Array.from({ length: count }, (_, i) => `玩家 ${i + 1}`);
-  const labels = stages.map((s) => s.label || s.name);
+  const labels = stages
+    .map((s) => s.label || s.name)
+    .filter((label) => !excludeNames.includes(label));
   for (let i = labels.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [labels[i], labels[j]] = [labels[j], labels[i]];
@@ -320,13 +322,19 @@ function getUniqueRandomStageLabels(count) {
 
 function createPlayers(count) {
   const safeCount = getPlayerCount(count);
-  const oldPlayers = players;
-  const uniqueLabels = getUniqueRandomStageLabels(safeCount);
+  const oldPlayers = players.slice(0, safeCount);
+  const existingNames = oldPlayers.map((p) => p.name);
+  const neededCount = Math.max(0, safeCount - oldPlayers.length);
+  const newLabels = getUniqueRandomStageLabels(neededCount, existingNames);
+  let newPlayerLabelIndex = 0;
   players = Array.from({ length: safeCount }, (_, index) => {
     const existing = oldPlayers[index];
-    return existing || {
+    if (existing) return existing;
+    const name = newLabels[newPlayerLabelIndex] || `玩家 ${index + 1}`;
+    newPlayerLabelIndex += 1;
+    return {
       id: createPlayerId(index),
-      name: uniqueLabels[index] || `玩家 ${index + 1}`,
+      name,
       score: 0,
       position: 0,
       avatar: "",
