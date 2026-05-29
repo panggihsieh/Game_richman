@@ -1214,8 +1214,8 @@ function showChampionSpotlight() {
 }
 
 titleInput.addEventListener("input", () => {
-  displayTitle.textContent = titleInput.value || "大南國小生態大富翁v2";
-  document.title = titleInput.value || "大南國小生態大富翁v2";
+  displayTitle.textContent = titleInput.value || "大南國小生態大富翁";
+  document.title = titleInput.value || "大南國小生態大富翁";
 });
 
 document.querySelector("#rollDice").addEventListener("click", rollDice);
